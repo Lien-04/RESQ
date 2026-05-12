@@ -1,11 +1,12 @@
 """
 Authentication Routes - Handle user registration, login, and logout
 """
-from flask import Blueprint, request, jsonify, session, g
+from flask import Blueprint, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 
 from models.user import User, UserRole
+from models.volunteer_skill import VolunteerSkill
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api')
 
@@ -80,36 +81,27 @@ def register():
     
     try:
         user.save()
-        
+
         # If volunteer, add skills to volunteer_skills table
         if data['role'] == 'volunteer' and data.get('skills'):
-            import sqlite3
-            from flask import g
-            
-            db = g.get('db') or sqlite3.connect('resq.db')
-            cursor = db.cursor()
-            
-            # Parse skills (comma-separated)
             skills_list = [skill.strip() for skill in data['skills'].split(',') if skill.strip()]
-            
             for skill in skills_list:
-                cursor.execute('''
-                    INSERT INTO volunteer_skills (user_id, skill_name, proficiency_level)
-                    VALUES (?, ?, ?)
-                ''', (user.id, skill, 'intermediate'))
-            
-            db.commit()
-        
+                VolunteerSkill(
+                    user_id=user.id,
+                    skill_name=skill,
+                    proficiency_level='intermediate'
+                ).save()
+
         # Set session for auto-login
         session['user_id'] = user.id
         session['username'] = user.username
         session['role'] = user.role
-        
+
         return jsonify({
             'message': 'User registered successfully',
             'user': user.to_dict()
         }), 201
-    
+
     except Exception as e:
         return jsonify({'error': f'Registration failed: {str(e)}'}), 500
 
@@ -121,30 +113,30 @@ def login():
     POST /api/login
     """
     data = request.get_json()
-    
+
     # Validate required fields
     if not data.get('username') or not data.get('password'):
         return jsonify({'error': 'Username and password required'}), 400
-    
+
     # Find user by username
     user = User.find_by_username(data['username'])
-    
+
     if not user:
         return jsonify({'error': 'Invalid credentials'}), 401
-    
+
     # Check password
     if not check_password_hash(user.password_hash, data['password']):
         return jsonify({'error': 'Invalid credentials'}), 401
-    
+
     # Check if user is active
     if not user.is_active:
         return jsonify({'error': 'Account is deactivated'}), 403
-    
+
     # Set session
     session['user_id'] = user.id
     session['username'] = user.username
     session['role'] = user.role
-    
+
     return jsonify({
         'message': 'Login successful',
         'user': user.to_dict()

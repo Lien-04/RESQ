@@ -1,16 +1,15 @@
 """
 Models package initialization
 """
-from .user import User, Citizen, Volunteer, Admin
+from .user import User
 from .incident import Incident, IncidentStatus
 from .notification import Notification
+from .volunteer_skill import VolunteerSkill
 
 __all__ = [
     'User',
-    'Citizen', 
-    'Volunteer',
-    'Admin',
     'Incident',
     'IncidentStatus',
-    'Notification'
+    'Notification',
+    'VolunteerSkill'
 ]

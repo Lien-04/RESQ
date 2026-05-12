@@ -138,16 +138,7 @@ def get_incidents():
     if completed_assignments:
         if current_user.role != UserRole.VOLUNTEER:
             return jsonify({'error': 'Only volunteers can view completed assignments'}), 403
-        # Get RESOLVED incidents assigned to current user
-        db = Incident.get_db()
-        cursor = db.cursor()
-        cursor.execute('''
-            SELECT * FROM incidents 
-            WHERE assigned_to = ? AND status = 'resolved'
-            ORDER BY resolved_at DESC
-        ''', (session['user_id'],))
-        rows = cursor.fetchall()
-        incidents = [Incident(**dict(row)) for row in rows]
+        incidents = Incident.get_completed_assignments(session['user_id'])
     elif assigned_to_me:
         if current_user.role != UserRole.VOLUNTEER:
             return jsonify({'error': 'Only volunteers can view assigned incidents'}), 403

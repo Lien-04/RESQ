@@ -1,11 +1,12 @@
 """
 Admin Routes - Handle admin dashboard and management functions
 """
-from flask import Blueprint, request, jsonify, session, g
+from flask import Blueprint, request, jsonify, session
 
 from models.user import User, UserRole
 from models.incident import Incident, IncidentStatus
 from models.notification import Notification, NotificationType
+from models.volunteer_skill import VolunteerSkill
 from db import db
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -278,17 +279,12 @@ def get_all_notifications():
     GET /api/admin/notifications
     """
     user_id = request.args.get('user_id', type=int)
-    
+
     if user_id:
         notifications = Notification.get_by_user(user_id)
     else:
-        # Get recent notifications
-        db = Notification.get_db()
-        cursor = db.cursor()
-        cursor.execute('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 50')
-        rows = cursor.fetchall()
-        notifications = [Notification(**dict(row)) for row in rows]
-    
+        notifications = Notification.get_all(limit=50)
+
     return jsonify({
         'notifications': [n.to_dict() for n in notifications]
     }), 200
@@ -336,30 +332,16 @@ def get_volunteers_with_skills():
     GET /api/admin/volunteers
     """
     volunteers = User.get_by_role(UserRole.VOLUNTEER)
-    
+
     volunteer_data = []
     for vol in volunteers:
         vol_dict = vol.to_dict()
-        
-        # Get skills from database
-        db = Notification.get_db()
-        cursor = db.cursor()
-        cursor.execute('''
-            SELECT skill_name, proficiency_level 
-            FROM volunteer_skills 
-            WHERE user_id = ?
-        ''', (vol.id,))
-        
-        skills = []
-        for row in cursor.fetchall():
-            skills.append({
-                'skill_name': row['skill_name'],
-                'proficiency_level': row['proficiency_level']
-            })
-        
+
+        skills = [skill.to_dict() for skill in VolunteerSkill.query.filter_by(user_id=vol.id).all()]
+
         vol_dict['volunteer_skills'] = skills
         volunteer_data.append(vol_dict)
-    
+
     return jsonify({
         'volunteers': volunteer_data
     }), 200
@@ -373,25 +355,12 @@ def get_volunteer_skills(volunteer_id):
     GET /api/admin/volunteers/<volunteer_id>/skills
     """
     user = User.find_by_id(volunteer_id)
-    
+
     if not user or user.role != UserRole.VOLUNTEER:
         return jsonify({'error': 'Volunteer not found'}), 404
-    
-    db = Notification.get_db()
-    cursor = db.cursor()
-    cursor.execute('''
-        SELECT skill_name, proficiency_level 
-        FROM volunteer_skills 
-        WHERE user_id = ?
-    ''', (volunteer_id,))
-    
-    skills = []
-    for row in cursor.fetchall():
-        skills.append({
-            'skill_name': row['skill_name'],
-            'proficiency_level': row['proficiency_level']
-        })
-    
+
+    skills = [skill.to_dict() for skill in VolunteerSkill.query.filter_by(user_id=volunteer_id).all()]
+
     return jsonify({
         'user_id': volunteer_id,
         'username': user.username,
@@ -408,28 +377,23 @@ def add_volunteer_skill(volunteer_id):
     POST /api/admin/volunteers/<volunteer_id>/skills
     """
     user = User.find_by_id(volunteer_id)
-    
+
     if not user or user.role != UserRole.VOLUNTEER:
         return jsonify({'error': 'Volunteer not found'}), 404
-    
+
     data = request.get_json()
-    
+
     if not data.get('skill_name'):
         return jsonify({'error': 'skill_name is required'}), 400
-    
+
     try:
-        db = Notification.get_db()
-        cursor = db.cursor()
-        
-        proficiency = data.get('proficiency_level', 'intermediate')
-        
-        cursor.execute('''
-            INSERT INTO volunteer_skills (user_id, skill_name, proficiency_level)
-            VALUES (?, ?, ?)
-        ''', (volunteer_id, data['skill_name'], proficiency))
-        
-        db.commit()
-        
+        skill = VolunteerSkill(
+            user_id=volunteer_id,
+            skill_name=data['skill_name'],
+            proficiency_level=data.get('proficiency_level', 'intermediate')
+        )
+        skill.save()
+
         return jsonify({
             'message': 'Skill added successfully'
         }), 201
