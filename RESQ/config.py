@@ -10,70 +10,62 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'resq-secret-key-2024')
     SECURITY_PASSWORD_SALT = os.environ.get('SECURITY_PASSWORD_SALT', 'resq-salt')
 
-    # ================================
-    # DATABASE CONFIG (MYSQL + SQLITE FALLBACK)
-    # ================================
+    # ============================
+    # DATABASE (CLOUD + LOCAL SAFE)
+    # ============================
     DATABASE_URL = os.environ.get('DATABASE_URL')
 
+    # Fix Railway / cloud MySQL format issue
     if DATABASE_URL:
-        # Fix for cloud MySQL providers
         if DATABASE_URL.startswith("mysql://"):
             DATABASE_URL = DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
 
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
     else:
-        # Local development fallback
-        SQLALCHEMY_DATABASE_URI = 'sqlite:///resq.db'
+        SQLALCHEMY_DATABASE_URI = "sqlite:///resq.db"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # ================================
+    # ============================
     # SESSION CONFIG
-    # ================================
+    # ============================
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
-    SESSION_COOKIE_SECURE = False  # True in production only
+    SESSION_COOKIE_SECURE = False  # True only in HTTPS production
     SESSION_COOKIE_HTTPONLY = True
 
-    # ================================
+    # ============================
     # API CONFIG
-    # ================================
+    # ============================
     RESTFUL_JSON = {'ensure_ascii': False}
 
     # Pagination
     ITEMS_PER_PAGE = 20
 
-    # JWT (if you use authentication tokens)
+    # ============================
+    # JWT CONFIG
+    # ============================
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'resq-jwt-secret')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
 
 
 class DevelopmentConfig(Config):
-    """Development configuration"""
     DEBUG = True
     TESTING = False
 
 
 class ProductionConfig(Config):
-    """Production configuration"""
     DEBUG = False
     TESTING = False
-
-    # Secure cookies in production
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True  # HTTPS only
 
 
 class TestingConfig(Config):
-    """Testing configuration"""
     DEBUG = True
     TESTING = True
-
-    # In-memory DB for testing
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 
 
-# ================================
-# CONFIG MAPPING
-# ================================
+# Configuration selector
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
