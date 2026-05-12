@@ -5,8 +5,8 @@ from flask import Blueprint, request, jsonify, session
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 
-from models.user import User, UserRole
-from models.volunteer_skill import VolunteerSkill
+from ..models.user import User, UserRole
+from ..models.volunteer_skill import VolunteerSkill
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api')
 

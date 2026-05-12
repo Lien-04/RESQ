@@ -9,10 +9,10 @@ Implemented permissions:
 """
 from flask import Blueprint, request, jsonify, session, g
 
-from models.user import User, UserRole
-from models.incident import Incident, IncidentStatus, IncidentType
-from models.notification import Notification, NotificationType
-from db import db
+from ..models.user import User, UserRole
+from ..models.incident import Incident, IncidentStatus, IncidentType
+from ..models.notification import Notification, NotificationType
+from ..db import db
 
 incidents_bp = Blueprint('incidents', __name__, url_prefix='/api')
 

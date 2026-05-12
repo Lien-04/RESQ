@@ -3,11 +3,11 @@ Database Initialization Script
 Creates tables and initializes sample data
 """
 from datetime import datetime
-from db import db
-from models.user import User, UserRole
-from models.incident import Incident
-from models.notification import Notification, NotificationType
-from models.volunteer_skill import VolunteerSkill
+from ..db import db
+from ..models.user import User, UserRole
+from ..models.incident import Incident
+from ..models.notification import Notification, NotificationType
+from ..models.volunteer_skill import VolunteerSkill
 
 
 def init_database():

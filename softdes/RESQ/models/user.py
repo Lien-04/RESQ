@@ -4,7 +4,7 @@ Using SQLAlchemy ORM for database operations
 """
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
-from db import db
+from ..db import db
 
 
 class UserRole:

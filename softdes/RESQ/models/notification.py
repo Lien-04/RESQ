@@ -2,7 +2,7 @@
 Notification Model - SQLAlchemy model for notifications
 """
 from datetime import datetime
-from db import db
+from ..db import db
 
 
 class NotificationType:

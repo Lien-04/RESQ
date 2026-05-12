@@ -1,7 +1,7 @@
 """
 Volunteer Skill Model - SQLAlchemy model for volunteer skills
 """
-from db import db
+from ..db import db
 
 
 class VolunteerSkill(db.Model):

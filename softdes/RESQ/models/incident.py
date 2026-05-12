@@ -3,7 +3,7 @@ Incident Model - SQLAlchemy model for incidents
 """
 from datetime import datetime
 from sqlalchemy import func
-from db import db
+from ..db import db
 
 
 class IncidentStatus:

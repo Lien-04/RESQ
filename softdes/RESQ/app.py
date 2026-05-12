@@ -6,15 +6,15 @@ from flask import Flask, request, jsonify, session, render_template
 from sqlalchemy import inspect, text
 import os
 
-from config import config
-from db import db
-from models.user import User
-from models.incident import Incident
-from models.notification import Notification
-from models.volunteer_skill import VolunteerSkill
-from routes.auth import auth_bp
-from routes.incidents import incidents_bp
-from routes.admin import admin_bp
+from .config import config
+from .db import db
+from .models.user import User
+from .models.incident import Incident
+from .models.notification import Notification
+from .models.volunteer_skill import VolunteerSkill
+from .routes.auth import auth_bp
+from .routes.incidents import incidents_bp
+from .routes.admin import admin_bp
 
 
 def create_app(config_name='development'):

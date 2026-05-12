@@ -3,11 +3,11 @@ Admin Routes - Handle admin dashboard and management functions
 """
 from flask import Blueprint, request, jsonify, session
 
-from models.user import User, UserRole
-from models.incident import Incident, IncidentStatus
-from models.notification import Notification, NotificationType
-from models.volunteer_skill import VolunteerSkill
-from db import db
+from ..models.user import User, UserRole
+from ..models.incident import Incident, IncidentStatus
+from ..models.notification import Notification, NotificationType
+from ..models.volunteer_skill import VolunteerSkill
+from ..db import db
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 
