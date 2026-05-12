@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - RESQ{% endblock %}
+
+{% block content %}
+
+<div class="dashboard">
+    <h1 style="margin-bottom: 1rem;">📊 Dashboard</h1>
+
+    
+
+    
+    <div id="userInfo" style="margin-bottom: 2rem;">
+        <p><strong>Welcome,</strong> <span id="userName">User</span></p>
+        <p><strong>Role:</strong> <span id="userRole" style="text-transform: capitalize;">-</span></p>
+    </div>
+    
+    <!-- Admin Stats - Only for admin -->
+    <div id="adminStats" style="display: none; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; color: #1e3c72;"><span id="totalIncidentsCount">0</span></div>
+            <div style="color: #666; font-size: 0.95rem;">Total Incidents</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; color: #ffc107;"><span id="pendingCount">0</span></div>
+            <div style="color: #666; font-size: 0.95rem;">Pending</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; color: #007bff;"><span id="inProgressCount">0</span></div>
+            <div style="color: #666; font-size: 0.95rem;">In Progress</div>
+        </div>
+        <div class="card" style="text-align: center;">
+            <div style="font-size: 2.5rem; color: #28a745;"><span id="resolvedCount">0</span></div>
+            <div style="color: #666; font-size: 0.95rem;">Resolved</div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation - Hidden for admin -->
+    <div id="tabNav" style="margin-bottom: 2rem;">
+<div style="display: flex; gap: 1rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.5rem;">
+            <button id="latestIncidentsTab" class="tab-button active" onclick="switchTab('latestIncidents')">Latest Incidents</button>
+            <button id="myReportsTab" class="tab-button" onclick="switchTab('myReports')">My Reports</button>
+            <button id="assignedIncidentsTab" class="tab-button" onclick="switchTab('assignedIncidents')" style="display: none;">Assigned Incidents</button>
+            <button id="completedAssignmentsTab" class="tab-button" onclick="switchTab('completedAssignments')" style="display: none;">Completed Assignments</button>
+        </div>
+    </div>
+    
+    <!-- Tab Contents - Hidden for admin -->
+    <div id="latestIncidentsContent" class="tab-content" style="display: block;">
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">Recent Incidents</h3>
+            <div id="incidentsList">
+                <p style="color: #666;">Loading incidents...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="myReportsContent" class="tab-content" style="display: none;">
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">My Reports</h3>
+            <div id="myReportsList">
+                <p style="color: #666;">Loading your reports...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="assignedIncidentsContent" class="tab-content" style="display: none;">
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">Incidents Assigned to Me</h3>
+            <div id="assignedIncidentsList">
+                <p style="color: #666;">Loading assigned incidents...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="completedAssignmentsContent" class="tab-content" style="display: none;">
+        <div class="card">
+            <h3 style="margin-bottom: 1rem;">Completed Assignments</h3>
+            <div id="completedAssignmentsList">
+                <p style="color: #666;">Loading completed assignments...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentUser = null;
+
+// Load user info and data on page load
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadUserInfo();
+    setupAdminView();
+});
+
+async function setupAdminView() {
+    if (currentUser && currentUser.role === 'admin') {
+        // Show admin stats + recent incidents, hide My Reports tab
+        document.getElementById('adminStats').style.display = 'grid';
+        document.getElementById('tabNav').style.display = 'none';
+        document.getElementById('myReportsContent').style.display = 'none';
+        document.getElementById('assignedIncidentsContent').style.display = 'none';
+        document.getElementById('latestIncidentsContent').style.display = 'block';
+        await loadAdminStats();
+        await loadLatestIncidents();
+    } else {
+        // Non-admin: load normal tabs
+        await loadLatestIncidents();
+        await loadMyReports();
+        if (currentUser && currentUser.role === 'volunteer') {
+            document.getElementById('assignedIncidentsTab').style.display = 'block';
+            document.getElementById('completedAssignmentsTab').style.display = 'block';
+            await loadAssignedIncidents();
+            await loadCompletedAssignments();
+        }
+    }
+}
+
+// Tab switching function
+function switchTab(tabName) {
+    // Hide all tab contents
+    document.getElementById('latestIncidentsContent').style.display = 'none';
+    document.getElementById('myReportsContent').style.display = 'none';
+    document.getElementById('assignedIncidentsContent').style.display = 'none';
+    
+    // Remove active class from all buttons
+    document.getElementById('latestIncidentsTab').classList.remove('active');
+    document.getElementById('myReportsTab').classList.remove('active');
+    if (document.getElementById('assignedIncidentsTab')) {
+        document.getElementById('assignedIncidentsTab').classList.remove('active');
+    }
+    if (document.getElementById('completedAssignmentsTab')) {
+        document.getElementById('completedAssignmentsTab').classList.remove('active');
+    }
+    
+    // Show selected tab and add active class
+    document.getElementById(tabName + 'Content').style.display = 'block';
+    document.getElementById(tabName + 'Tab').classList.add('active');
+}
+
+async function loadUserInfo() {
+    try {
+        const response = await fetch('/api/me');
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        
+        const data = await response.json();
+        currentUser = data.user;
+        
+        document.getElementById('userName').textContent = data.user.full_name;
+        document.getElementById('userRole').textContent = data.user.role;
+    } catch (error) {
+        console.error('Error loading user info:', error);
+    }
+}
+
+async function loadLatestIncidents() {
+    try {
+const response = await fetch('/api/reports?limit=5');
+        const data = await response.json();
+        
+        const listDiv = document.getElementById('incidentsList');
+        
+        if (data.incidents && data.incidents.length > 0) {
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tr style="background: #f5f7fa;">';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Title</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Type</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Status</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Assigned To</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Location</th>';
+            html += '</tr>';
+            
+            data.incidents.forEach(incident => {
+                const statusColor = getStatusColor(incident.status);
+                const assignedName = incident.assignee ? incident.assignee.full_name || incident.assignee.username : 'Unassigned';
+                const assignedColor = incident.assignee ? '#28a745' : '#6c757d';
+                html += '<tr>';
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.title}</td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.incident_type}</td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.status}</span></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${assignedColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${assignedName}</span></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.location}</td>`;
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            html += '<div style="text-align: center; margin-top: 1rem;"><a href="/reports" class="btn" style="background: #007bff; color: white; padding: 0.75rem 2rem; text-decoration: none; border-radius: 5px; font-weight: 500;">📋 Show More Reports</a></div>';
+            listDiv.innerHTML = html;
+        } else {
+            listDiv.innerHTML = '<p style="color: #666;">No incidents reported yet.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading incidents:', error);
+        document.getElementById('incidentsList').innerHTML = '<p style="color: #666;">Error loading incidents</p>';
+    }
+}
+
+async function loadMyReports() {
+    try {
+        const response = await fetch('/api/reports?my_reports=true');
+        const data = await response.json();
+        
+        const listDiv = document.getElementById('myReportsList');
+        
+        if (data.incidents && data.incidents.length > 0) {
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tr style="background: #f5f7fa;">';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Title</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Type</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Status</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Priority</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Date</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Action</th>';
+            html += '</tr>';
+            
+            data.incidents.forEach(incident => {
+                const statusColor = getStatusColor(incident.status);
+                const priorityColor = getPriorityColor(incident.priority);
+                html += '<tr>';
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><strong>${incident.title}</strong></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.incident_type}</td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.status}</span></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${priorityColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.priority}</span></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${new Date(incident.created_at).toLocaleDateString()}</td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><a href="/reports?id=${incident.id}" style="color: #007bff; text-decoration: none;">View</a></td>`;
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            listDiv.innerHTML = html;
+        } else {
+            listDiv.innerHTML = '<p style="color: #666;">You haven\'t reported any incidents yet.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading my reports:', error);
+        document.getElementById('myReportsList').innerHTML = '<p style="color: #666;">Error loading your reports</p>';
+    }
+}
+
+async function loadAssignedIncidents() {
+    try {
+        const response = await fetch('/api/reports?assigned_to_me=true');
+        const data = await response.json();
+        
+        const listDiv = document.getElementById('assignedIncidentsList');
+        
+        if (data.incidents && data.incidents.length > 0) {
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tr style="background: #f5f7fa;">';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Title</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Type</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Priority</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Status</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Location</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Action</th>';
+            html += '</tr>';
+            
+            data.incidents.forEach(incident => {
+                const statusColor = getStatusColor(incident.status);
+                const priorityColor = getPriorityColor(incident.priority);
+                html += '<tr>';
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><strong>${incident.title}</strong></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.incident_type}</td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${priorityColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.priority}</span></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.status}</span></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.location}</td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><a href="/reports?id=${incident.id}" style="color: #007bff; text-decoration: none;">View</a></td>`;
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            listDiv.innerHTML = html;
+        } else {
+            listDiv.innerHTML = '<p style="color: #666;">No incidents assigned to you.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading assigned incidents:', error);
+    }
+}
+
+
+
+async function loadAdminStats() {
+    try {
+        const response = await fetch('/api/admin/stats');
+        const data = await response.json();
+        
+        document.getElementById('totalIncidentsCount').textContent = data.incidents?.total || 0;
+        document.getElementById('pendingCount').textContent = data.incidents?.by_status?.pending || 0;
+        document.getElementById('inProgressCount').textContent = data.incidents?.by_status?.['in_progress'] || data.incidents?.by_status?.in_progress || 0;
+        document.getElementById('resolvedCount').textContent = data.incidents?.by_status?.resolved || 0;
+    } catch (error) {
+        console.error('Error loading admin stats:', error);
+    }
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': '#ffc107',
+        'verified': '#17a2b8',
+        'in_progress': '#007bff',
+        'resolved': '#28a745'
+    };
+    return colors[status] || '#6c757d';
+}
+
+async function loadCompletedAssignments() {
+    try {
+        const response = await fetch('/api/reports?completed_assignments=true');
+        const data = await response.json();
+        
+        const listDiv = document.getElementById('completedAssignmentsList');
+        
+        if (data.incidents && data.incidents.length > 0) {
+            let html = '<table style="width: 100%; border-collapse: collapse;">';
+            html += '<tr style="background: #f5f7fa;">';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Title</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Type</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Priority</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Completed</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Location</th>';
+            html += '<th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid #e0e0e0;">Action</th>';
+            html += '</tr>';
+            
+            data.incidents.forEach(incident => {
+                const priorityColor = getPriorityColor(incident.priority);
+                const completedDate = incident.resolved_at ? new Date(incident.resolved_at).toLocaleDateString() : 'N/A';
+                html += '<tr>';
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><strong>${incident.title}</strong></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.incident_type}</td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${priorityColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.priority}</span></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: #28a745; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${completedDate}</span></td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.location}</td>`;
+                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><a href="/reports?id=${incident.id}" style="color: #007bff; text-decoration: none;">View</a></td>`;
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            listDiv.innerHTML = html;
+        } else {
+            listDiv.innerHTML = '<p style="color: #666;">No completed assignments yet.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading completed assignments:', error);
+        document.getElementById('completedAssignmentsList').innerHTML = '<p style="color: #666;">Error loading completed assignments</p>';
+    }
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        'low': '#6c757d',
+        'normal': '#17a2b8',
+        'high': '#ff6b35',
+        'critical': '#dc3545'
+    };
+    return colors[priority] || '#6c757d';
+}
+
+
+</script>
+{% endblock %}
