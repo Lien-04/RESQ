@@ -1,17 +1,19 @@
 # RESQ - Disaster Response Coordination Platform
-# Dependencies
-
-# Flask and extensions
+# Core Framework
 Flask==3.0.0
 Werkzeug==3.0.1
 
-# Database
-# SQLite is included with Python, no additional package needed
+# Database (REQUIRED for MySQL)
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.25
+PyMySQL==1.1.0
 
-# For production, you might want to use:
-# Flask-SQLAlchemy==3.1.1
-# Flask-Migrate==4.0.5
+# Production Server
+gunicorn==21.2.0
 
-# Testing
-# pytest==7.4.3
-# pytest-flask==1.3.0
+# Optional (for migrations - recommended)
+Flask-Migrate==4.0.5
+
+# Optional Testing
+pytest==7.4.3
+pytest-flask==1.3.0
