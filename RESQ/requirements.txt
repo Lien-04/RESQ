@@ -1,19 +1,15 @@
-# RESQ - Disaster Response Coordination Platform
-# Core Framework
+# Flask core
 Flask==3.0.0
 Werkzeug==3.0.1
 
-# Database (REQUIRED for MySQL)
+# Database ORM (REQUIRED for MySQL)
 Flask-SQLAlchemy==3.1.1
-SQLAlchemy==2.0.25
-PyMySQL==1.1.0
 
-# Production Server
+# MySQL driver (IMPORTANT for Railway)
+pymysql==1.1.0
+
+# Production server
 gunicorn==21.2.0
 
-# Optional (for migrations - recommended)
+# Optional (recommended for migrations later)
 Flask-Migrate==4.0.5
-
-# Optional Testing
-pytest==7.4.3
-pytest-flask==1.3.0
