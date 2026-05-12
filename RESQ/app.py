@@ -2,7 +2,8 @@
 RESQ - Disaster Response Coordination Platform
 Main Flask Application
 """
-from flask import Flask, request, jsonify, session, g, render_template
+from flask import Flask, request, jsonify, session, render_template
+from sqlalchemy import inspect, text
 import os
 
 from config import config
@@ -10,6 +11,7 @@ from db import db
 from models.user import User
 from models.incident import Incident
 from models.notification import Notification
+from models.volunteer_skill import VolunteerSkill
 from routes.auth import auth_bp
 from routes.incidents import incidents_bp
 from routes.admin import admin_bp
@@ -33,7 +35,14 @@ def create_app(config_name='development'):
     # In production, use migrations instead
     with app.app_context():
         db.create_all()
-        
+
+        inspector = inspect(db.engine)
+        if inspector.has_table('incidents'):
+            incident_columns = [column['name'] for column in inspector.get_columns('incidents')]
+            if 'verified_by' not in incident_columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE incidents ADD COLUMN verified_by INTEGER'))
+
         # Initialize sample data if database is empty
         if User.query.count() == 0:
             from database.init_db import init_database
