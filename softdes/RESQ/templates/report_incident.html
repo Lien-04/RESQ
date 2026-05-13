@@ -95,12 +95,17 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
             body: JSON.stringify(formData)
         });
         
-        const data = await response.json();
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = { error: 'Invalid response from server' };
+        }
         
         if (response.ok) {
-            alertDiv.textContent = 'Incident reported successfully! You will be notified when it is verified.';
-            alertDiv.style.display = 'block';
+            showNotification('✓ Incident reported successfully!', 'success', 2000);
             errorDiv.style.display = 'none';
+            alertDiv.style.display = 'none';
             
             // Reset form
             document.getElementById('incidentForm').reset();
@@ -110,13 +115,19 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
                 window.location.href = '/dashboard';
             }, 2000);
         } else {
-            errorDiv.textContent = data.error || 'Failed to report incident';
+            const errorMsg = data.error || 'Failed to report incident';
+            errorDiv.textContent = errorMsg;
             errorDiv.style.display = 'block';
             alertDiv.style.display = 'none';
+            showNotification('✗ ' + errorMsg, 'error', 2000);
+            console.error('Report submission error:', errorMsg, 'Status:', response.status);
         }
     } catch (error) {
-        errorDiv.textContent = 'An error occurred. Please try again.';
+        const errorMsg = 'An error occurred. Please try again.';
+        errorDiv.textContent = errorMsg;
         errorDiv.style.display = 'block';
+        showNotification('✗ ' + errorMsg, 'error', 2000);
+        console.error('Report submission error:', error);
     }
 });
 </script>
