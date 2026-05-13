@@ -8,11 +8,11 @@
 
 </head>
 <body>
-    <header>
-        <div class="logo">
-            <div class="logo-icon">⚡</div>
-            RESQ
-        </div>
+    <header class="app-header">
+        <a class="logo" href="{{ url_for('dashboard_page') if session.user_id else '/' }}">
+            <img class="logo-icon" src="{{ url_for('static', filename='images/resq-logo.png') }}" alt="RESQ logo">
+            <span>RESQ</span>
+        </a>
         <nav>
             {% if session.user_id %}
                 <a href="{{ url_for('dashboard_page') }}">Dashboard</a>
