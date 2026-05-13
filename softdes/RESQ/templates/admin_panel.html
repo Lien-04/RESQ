@@ -507,6 +507,27 @@ async function submitAssignment() {
     }
 }
 
+async function verifyAdminIncident(incidentId) {
+    if (!confirm('Are you sure you want to verify this incident?')) return;
+    
+    try {
+        const response = await fetch(`/api/reports/${incidentId}/verify`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Incident verified successfully!');
+            loadAdminIncidents();
+        } else {
+            alert(data.error || 'Failed to verify incident');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error verifying incident');
+    }
+}
+
 
 </script>
 {% endblock %}
