@@ -90,6 +90,7 @@ class Incident(db.Model):
             'priority': self.priority,
             'status': self.status,
             'reporter_id': self.reporter_id,
+            'assigned_to': self.assigned_volunteer_id,
             'assigned_volunteer_id': self.assigned_volunteer_id,
             'verified_by': self.verified_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -100,9 +101,10 @@ class Incident(db.Model):
     def to_detailed_dict(self):
         data = self.to_dict()
         data.update({
-            'reporter': self.reporter.username if self.reporter else None,
-            'assigned_volunteer': self.assigned_volunteer.username if self.assigned_volunteer else None,
-            'verified_by_username': self.verifier.username if self.verifier else None
+            'reporter': self.reporter.to_dict() if self.reporter else None,
+            'assignee': self.assigned_volunteer.to_dict() if self.assigned_volunteer else None,
+            'verifier': self.verifier.to_dict() if self.verifier else None,
+            'verification_status': 'verified' if self.verified_by else 'not_verified'
         })
         return data
 
@@ -168,7 +170,7 @@ class Incident(db.Model):
 
     def assign_to(self, volunteer_id):
         self.assigned_volunteer_id = volunteer_id
-        if self.status == IncidentStatus.PENDING:
+        if self.status in [IncidentStatus.PENDING, IncidentStatus.VERIFIED]:
             self.status = IncidentStatus.IN_PROGRESS
         self.updated_at = datetime.utcnow()
         db.session.commit()
