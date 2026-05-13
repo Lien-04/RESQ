@@ -83,7 +83,7 @@ def create_incident():
         latitude=data.get('latitude'),
         longitude=data.get('longitude'),
         priority=data.get('priority', 'normal'),
-        reported_by=session['user_id']
+        reporter_id=session['user_id']
     )
     
     try:
