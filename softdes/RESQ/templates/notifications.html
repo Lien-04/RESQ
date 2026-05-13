@@ -3,18 +3,12 @@
 {% block title %}Notifications - RESQ{% endblock %}
 
 {% block content %}
-<div class="notifications page-stack">
-    <section class="page-hero compact">
-        <div>
-            <span class="eyebrow">Updates</span>
-            <h1>Notifications</h1>
-            <p>Review assignments, verification updates, system messages, and incident activity.</p>
-        </div>
-    </section>
+<div class="notifications">
+<h1 style="margin-bottom: 1rem;">🔔 Notifications</h1>
 
-    <div class="card notification-toolbar">
+    <div class="card" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <div id="notificationsHeader">
-            <span id="unreadCount" class="unread-pill">Loading...</span>
+            <span id="unreadCount" style="background: #dc3545; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: bold;">Loading...</span>
         </div>
         <button id="markAllBtn" class="btn btn-secondary" onclick="markAllAsRead()" style="display: none;">
             Mark All as Read
@@ -29,6 +23,7 @@
 </div>
 
 <script>
+
 document.addEventListener('DOMContentLoaded', async function() {
     await loadNotifications();
 });
@@ -94,13 +89,7 @@ async function loadNotifications() {
 }
 
 async function markAllAsRead() {
-    const confirmed = await showConfirmModal({
-        title: 'Mark Notifications Read',
-        message: 'Mark all notifications as read?',
-        confirmText: 'Mark All Read',
-        confirmClass: 'btn-confirm'
-    });
-    if (!confirmed) return;
+    if (!confirm('Mark ALL notifications as read?')) return;
     
     try {
         const response = await fetch('/api/notifications/mark-all-read', { 
@@ -113,14 +102,14 @@ async function markAllAsRead() {
             document.getElementById('unreadCount').textContent = '0';
             document.getElementById('unreadCount').style.display = 'none';
             await loadNotifications();
-            await showMessageModal('Notifications Updated', 'All notifications marked as read!', 'success');
+            showNotification('✓ All notifications marked as read!', 'success', 1500);
         } else {
             const data = await response.json();
-            await showMessageModal('Update Failed', data.error || 'Failed to mark all as read', 'danger');
+            showNotification(data.error || 'Failed to mark all as read', 'error', 2000);
         }
     } catch (error) {
         console.error('Error:', error);
-        await showMessageModal('Update Error', 'Error marking all as read', 'danger');
+        showNotification('Error marking all as read', 'error', 2000);
     }
 }
 

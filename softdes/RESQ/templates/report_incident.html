@@ -3,17 +3,10 @@
 {% block title %}Report Incident - RESQ{% endblock %}
 
 {% block content %}
-<div class="report-incident page-stack">
-    <section class="page-hero compact">
-        <div>
-            <span class="eyebrow">Citizen report</span>
-            <h1>Report New Incident</h1>
-            <p>Share clear details so responders can verify, prioritize, and coordinate quickly.</p>
-        </div>
-    </section>
+<div class="report-incident">
+    <h1 style="margin-bottom: 1rem;">📢 Report New Incident</h1>
     
-    <div class="form-layout">
-    <div class="card form-card">
+    <div class="card" style="max-width: 600px;">
         <div id="alertMessage" class="alert alert-success" style="display: none;"></div>
         <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
         
@@ -27,13 +20,13 @@
                 <label for="incident_type">Incident Type *</label>
                 <select id="incident_type" name="incident_type" required>
                     <option value="">Select incident type</option>
-                    <option value="fire">Fire</option>
-                    <option value="flood">Flood</option>
-                    <option value="earthquake">Earthquake</option>
-                    <option value="storm">Storm</option>
-                    <option value="medical">Medical Emergency</option>
-                    <option value="traffic">Traffic Accident</option>
-                    <option value="other">Other</option>
+                    <option value="fire">🔥 Fire</option>
+                    <option value="flood">🌊 Flood</option>
+                    <option value="earthquake">🌍 Earthquake</option>
+                    <option value="storm">⛈️ Storm</option>
+                    <option value="medical">🏥 Medical Emergency</option>
+                    <option value="traffic">🚗 Traffic Accident</option>
+                    <option value="other">❓ Other</option>
                 </select>
             </div>
             
@@ -56,21 +49,20 @@
                 <textarea id="description" name="description" rows="5" required placeholder="Detailed description of the incident..."></textarea>
             </div>
             
-            <button type="submit" class="btn btn-emergency btn-block">Submit Report</button>
+            <button type="submit" class="btn" style="width: 100%;">📨 Submit Report</button>
         </form>
     </div>
     
     <!-- Tips Card -->
-    <div class="card tips-card">
-        <h3>Tips for Reporting</h3>
-        <ul>
+    <div class="card" style="max-width: 600px; margin-top: 1rem;">
+        <h3 style="margin-bottom: 0.5rem;">💡 Tips for Reporting</h3>
+        <ul style="color: #666; padding-left: 1.2rem;">
             <li>Provide accurate location information</li>
             <li>Describe what you see, hear, or smell</li>
             <li>Mention any immediate dangers</li>
             <li>Include number of people affected if known</li>
             <li>Stay calm and stay safe while reporting</li>
         </ul>
-    </div>
     </div>
 </div>
 
@@ -95,36 +87,62 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
         errorDiv.style.display = 'block';
         return;
     }
-    
+
+    // Clear previous messages
+    errorDiv.style.display = 'none';
+    alertDiv.style.display = 'none';
+
     try {
+        // Pre-check auth so we can show a meaningful error
+        const meResp = await fetch('/api/me');
+        if (meResp.status === 401) {
+            const msg = 'Please login again to submit a report.';
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            showNotification('✗ ' + msg, 'error', 2500);
+            return;
+        }
+
         const response = await fetch('/api/reports', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
         });
-        
-        const data = await response.json();
-        
+
+        // Try to parse JSON error/success payload
+        let data = null;
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = null;
+        }
+
         if (response.ok) {
-            alertDiv.textContent = 'Incident reported successfully! You will be notified when it is verified.';
-            alertDiv.style.display = 'block';
+            showNotification('✓ Incident reported successfully!', 'success', 2000);
             errorDiv.style.display = 'none';
-            
+            alertDiv.style.display = 'none';
+
             // Reset form
             document.getElementById('incidentForm').reset();
-            
+
             // Redirect after short delay
             setTimeout(() => {
                 window.location.href = '/dashboard';
             }, 2000);
         } else {
-            errorDiv.textContent = data.error || 'Failed to report incident';
+            const errorMsg = data?.error || 'Failed to report incident';
+            errorDiv.textContent = errorMsg;
             errorDiv.style.display = 'block';
             alertDiv.style.display = 'none';
+            showNotification('✗ ' + errorMsg, 'error', 2500);
+            console.error('Report submission error:', errorMsg, 'Status:', response.status);
         }
     } catch (error) {
-        errorDiv.textContent = 'An error occurred. Please try again.';
+        const errorMsg = 'An error occurred. Please try again.';
+        errorDiv.textContent = errorMsg;
         errorDiv.style.display = 'block';
+        showNotification('✗ ' + errorMsg, 'error', 2500);
+        console.error('Report submission error:', error);
     }
 });
 </script>
