@@ -114,7 +114,7 @@ class Notification(db.Model):
 
     @staticmethod
     def notify_admins_new_incident(incident_id, title, incident_type, location):
-        from models.user import User, UserRole
+        from ..models.user import User, UserRole
         admins = User.get_by_role(UserRole.ADMIN)
         for admin in admins:
             Notification.create_notification(
@@ -137,7 +137,7 @@ class Notification(db.Model):
 
     @staticmethod
     def notify_admins_status_update(incident_id, title, status, updated_by_username):
-        from models.user import User, UserRole
+        from ..models.user import User, UserRole
         admins = User.get_by_role(UserRole.ADMIN)
         for admin in admins:
             Notification.create_notification(
