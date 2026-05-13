@@ -61,6 +61,73 @@
 </div>
 
 <script>
+// ==================== NOTIFICATION SYSTEM ====================
+function showNotification(message, type = 'success', duration = 1000) {
+    // Remove existing notification if any
+    const existingNotif = document.getElementById('notificationPopup');
+    if (existingNotif) existingNotif.remove();
+    
+    // Create notification element
+    const notif = document.createElement('div');
+    notif.id = 'notificationPopup';
+    notif.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-in-out;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    // Set color based on type
+    const colors = {
+        'success': '#28a745',
+        'error': '#dc3545',
+        'warning': '#ffc107',
+        'info': '#17a2b8'
+    };
+    notif.style.backgroundColor = colors[type] || colors['success'];
+    notif.textContent = message;
+    
+    document.body.appendChild(notif);
+    
+    // Auto-remove after duration
+    setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease-in-out';
+        setTimeout(() => notif.remove(), 300);
+    }, duration);
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
     const incidentId = params.get('id');
@@ -291,13 +358,13 @@ async function verifyIncident(id) {
         const data = await response.json();
         
         if (response.ok) {
-            alert('Incident verified successfully!');
+            showNotification('✓ Incident verified successfully!', 'success', 1500);
             loadIncidents();
         } else {
-            alert(data.error || 'Failed to verify incident');
+            showNotification(data.error || 'Failed to verify incident', 'error', 2000);
         }
     } catch (error) {
-        alert('Error verifying incident');
+        showNotification('Error verifying incident', 'error', 2000);
     }
 }
 
@@ -326,13 +393,15 @@ async function confirmStatusUpdate() {
         const data = await response.json();
 
         if (response.ok) {
-            alert('Status updated successfully!');
+            showNotification('✓ Status updated successfully!', 'success', 1500);
             
             // VOLUNTEER REDIRECT: Go to dashboard after update
             const userResponse = await fetch('/api/me');
             const userData = await userResponse.json();
             if (userData.user.role === 'volunteer') {
-                window.location.href = '/dashboard';
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 1500);
             } else {
                 closeStatusModal();
                 const params = new URLSearchParams(window.location.search);
@@ -343,10 +412,10 @@ async function confirmStatusUpdate() {
                 }
             }
         } else {
-            alert(data.error || 'Failed to update status');
+            showNotification(data.error || 'Failed to update status', 'error', 2000);
         }
     } catch (error) {
-        alert('Error updating status');
+        showNotification('Error updating status', 'error', 2000);
         console.error(error);
     }
 }
