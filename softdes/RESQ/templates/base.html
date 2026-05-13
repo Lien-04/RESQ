@@ -13,7 +13,7 @@
             <img class="logo-icon" src="{{ url_for('static', filename='images/resq-logo.png') }}" alt="RESQ logo">
             <span>RESQ</span>
         </a>
-        <nav>
+        <nav class="app-nav" aria-label="Primary navigation">
             {% if session.user_id %}
                 <a href="{{ url_for('dashboard_page') }}">Dashboard</a>
                 <a href="{{ url_for('report_incident_page') }}">Report</a>
@@ -25,10 +25,10 @@
                 {% if session.role == 'admin' %}
                     <a href="{{ url_for('admin_page') }}">Admin</a>
                 {% endif %}
-                <a href="#" onclick="logout(event); return false;" style="cursor: pointer;">Logout</a>
+                <a href="#" onclick="logout()">Logout</a>
             {% else %}
                 <a href="{{ url_for('login_page') }}">Login</a>
-                <a href="{{ url_for('register_page') }}">Register</a>
+                <a class="nav-cta" href="{{ url_for('register_page') }}">Register</a>
             {% endif %}
         </nav>
     </header>
@@ -37,78 +37,23 @@
         {% block content %}{% endblock %}
     </div>
     
-    <footer>
-        <p>&copy; 2024 RESQ - Disaster Response Coordination Platform | Built with Flask</p>
+    <footer class="app-footer">
+        <p>&copy; 2026 RESQ - Disaster Response Coordination Platform</p>
     </footer>
+
+    <div id="appModal" class="modal-backdrop centered app-modal" style="display: none;" aria-hidden="true">
+        <div class="modal-card app-modal-card" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+            <h2 id="appModalTitle">Confirm Action</h2>
+            <p id="appModalMessage" class="modal-message"></p>
+            <div id="appModalFields" class="modal-fields"></div>
+            <div class="modal-actions">
+                <button id="appModalCancel" type="button" class="btn btn-secondary">Cancel</button>
+                <button id="appModalConfirm" type="button" class="btn btn-confirm">Confirm</button>
+            </div>
+        </div>
+    </div>
     
     <script>
-        // ==================== NOTIFICATION SYSTEM ====================
-        function showNotification(message, type = 'success', duration = 1000) {
-            // Remove existing notification if any
-            const existingNotif = document.getElementById('notificationPopup');
-            if (existingNotif) existingNotif.remove();
-            
-            // Create notification element
-            const notif = document.createElement('div');
-            notif.id = 'notificationPopup';
-            notif.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 1rem 1.5rem;
-                border-radius: 4px;
-                color: white;
-                font-weight: 500;
-                z-index: 10000;
-                animation: slideIn 0.3s ease-in-out;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            `;
-            
-            // Set color based on type
-            const colors = {
-                'success': '#28a745',
-                'error': '#dc3545',
-                'warning': '#ffc107',
-                'info': '#17a2b8'
-            };
-            notif.style.backgroundColor = colors[type] || colors['success'];
-            notif.textContent = message;
-            
-            document.body.appendChild(notif);
-            
-            // Auto-remove after duration
-            setTimeout(() => {
-                notif.style.animation = 'slideOut 0.3s ease-in-out';
-                setTimeout(() => notif.remove(), 300);
-            }, duration);
-        }
-
-        // Add CSS animations
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideIn {
-                from {
-                    transform: translateX(400px);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-            @keyframes slideOut {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(400px);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-
         // Authentication check
         async function checkAuth() {
             const response = await fetch('/api/me');
@@ -120,19 +65,131 @@
         }
         
         // Logout function
-        async function logout(event) {
-            if (event) {
-                event.preventDefault();
-            }
-            if (confirm('Are you sure you want to logout?')) {
+        async function logout() {
+            const confirmed = await showConfirmModal({
+                title: 'Logout',
+                message: 'Are you sure you want to logout?',
+                confirmText: 'Logout'
+            });
+            if (confirmed) {
                 await fetch('/api/logout', { method: 'POST' });
-                showNotification('✓ Logged out successfully!', 'info', 1500);
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1500);
+                window.location.href = '/';
             }
         }
-        window.logout = logout;
+
+        // Reusable in-app modal helpers
+        function showAppModal(options = {}) {
+            const modal = document.getElementById('appModal');
+            const titleEl = document.getElementById('appModalTitle');
+            const messageEl = document.getElementById('appModalMessage');
+            const fieldsEl = document.getElementById('appModalFields');
+            const cancelBtn = document.getElementById('appModalCancel');
+            const confirmBtn = document.getElementById('appModalConfirm');
+
+            titleEl.textContent = options.title || 'Confirm Action';
+            messageEl.textContent = options.message || '';
+            fieldsEl.innerHTML = '';
+            confirmBtn.textContent = options.confirmText || 'Confirm';
+            cancelBtn.textContent = options.cancelText || 'Cancel';
+            confirmBtn.className = `btn ${options.confirmClass || 'btn-confirm'}`;
+            cancelBtn.style.display = options.showCancel === false ? 'none' : 'inline-flex';
+            modal.classList.toggle('single-action', options.showCancel === false);
+
+            const fields = options.fields || [];
+            fields.forEach(field => {
+                const group = document.createElement('div');
+                group.className = 'form-group';
+
+                const label = document.createElement('label');
+                label.setAttribute('for', `modalField_${field.name}`);
+                label.textContent = field.label;
+                group.appendChild(label);
+
+                let input;
+                if (field.type === 'select') {
+                    input = document.createElement('select');
+                    (field.options || []).forEach(option => {
+                        const item = document.createElement('option');
+                        item.value = option.value;
+                        item.textContent = option.label;
+                        input.appendChild(item);
+                    });
+                } else if (field.type === 'textarea') {
+                    input = document.createElement('textarea');
+                    input.rows = field.rows || 4;
+                } else {
+                    input = document.createElement('input');
+                    input.type = field.type || 'text';
+                }
+
+                input.id = `modalField_${field.name}`;
+                input.name = field.name;
+                input.value = field.value || '';
+                input.placeholder = field.placeholder || '';
+                group.appendChild(input);
+                fieldsEl.appendChild(group);
+            });
+
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
+
+            return new Promise(resolve => {
+                function collectValues() {
+                    const values = {};
+                    fields.forEach(field => {
+                        const input = document.getElementById(`modalField_${field.name}`);
+                        values[field.name] = input ? input.value : '';
+                    });
+                    return values;
+                }
+
+                function close(value) {
+                    modal.style.display = 'none';
+                    modal.setAttribute('aria-hidden', 'true');
+                    confirmBtn.removeEventListener('click', onConfirm);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    modal.removeEventListener('click', onBackdrop);
+                    resolve(value);
+                }
+
+                function onConfirm() {
+                    close(fields.length ? collectValues() : true);
+                }
+
+                function onCancel() {
+                    close(false);
+                }
+
+                function onBackdrop(event) {
+                    if (event.target === modal) {
+                        close(false);
+                    }
+                }
+
+                confirmBtn.addEventListener('click', onConfirm);
+                cancelBtn.addEventListener('click', onCancel);
+                modal.addEventListener('click', onBackdrop);
+            });
+        }
+
+        function showConfirmModal(options = {}) {
+            return showAppModal(options);
+        }
+
+        function showMessageModal(title, message, variant = 'info') {
+            const confirmClass = variant === 'success' ? 'btn-confirm' : variant === 'danger' ? 'btn-danger' : 'btn';
+            return showAppModal({
+                title,
+                message,
+                confirmText: 'OK',
+                confirmClass,
+                showCancel: false
+            });
+        }
+
+        function showFormModal(options = {}) {
+            return showAppModal(options);
+        }
         
         // Check for unread notifications
         async function checkUnreadNotifications() {
