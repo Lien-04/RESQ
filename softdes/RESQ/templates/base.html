@@ -25,7 +25,7 @@
                 {% if session.role == 'admin' %}
                     <a href="{{ url_for('admin_page') }}">Admin</a>
                 {% endif %}
-                <a href="#" onclick="logout()">Logout</a>
+                <a href="#" onclick="logout(event);">Logout</a>
             {% else %}
                 <a href="{{ url_for('login_page') }}">Login</a>
                 <a href="{{ url_for('register_page') }}">Register</a>
@@ -120,7 +120,10 @@
         }
         
         // Logout function
-        async function logout() {
+        async function logout(event) {
+            if (event) {
+                event.preventDefault();
+            }
             if (confirm('Are you sure you want to logout?')) {
                 await fetch('/api/logout', { method: 'POST' });
                 showNotification('✓ Logged out successfully!', 'info', 1500);
@@ -129,6 +132,7 @@
                 }, 1500);
             }
         }
+        window.logout = logout;
         
         // Check for unread notifications
         async function checkUnreadNotifications() {
