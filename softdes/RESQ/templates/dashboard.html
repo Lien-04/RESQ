@@ -4,40 +4,47 @@
 
 {% block content %}
 
-<div class="dashboard">
-    <h1 style="margin-bottom: 1rem;">📊 Dashboard</h1>
+<div class="dashboard page-stack">
+    <section class="page-hero compact">
+        <div>
+            <span class="eyebrow">Operations center</span>
+            <h1>Dashboard</h1>
+            <p>See what needs attention, track your reports, and move response work forward.</p>
+        </div>
+        <a class="btn btn-emergency" href="{{ url_for('report_incident_page') }}">Report Incident</a>
+    </section>
 
     
 
     
-    <div id="userInfo" style="margin-bottom: 2rem;">
+    <div id="userInfo" class="user-summary">
         <p><strong>Welcome,</strong> <span id="userName">User</span></p>
         <p><strong>Role:</strong> <span id="userRole" style="text-transform: capitalize;">-</span></p>
     </div>
     
     <!-- Admin Stats - Only for admin -->
-    <div id="adminStats" style="display: none; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-        <div class="card" style="text-align: center;">
-            <div style="font-size: 2.5rem; color: #1e3c72;"><span id="totalIncidentsCount">0</span></div>
-            <div style="color: #666; font-size: 0.95rem;">Total Incidents</div>
+    <div id="adminStats" class="metric-grid" style="display: none;">
+        <div class="metric-card card">
+            <div class="metric-number navy"><span id="totalIncidentsCount">0</span></div>
+            <div class="metric-label">Total Incidents</div>
         </div>
-        <div class="card" style="text-align: center;">
-            <div style="font-size: 2.5rem; color: #ffc107;"><span id="pendingCount">0</span></div>
-            <div style="color: #666; font-size: 0.95rem;">Pending</div>
+        <div class="metric-card card">
+            <div class="metric-number yellow"><span id="pendingCount">0</span></div>
+            <div class="metric-label">Pending</div>
         </div>
-        <div class="card" style="text-align: center;">
-            <div style="font-size: 2.5rem; color: #007bff;"><span id="inProgressCount">0</span></div>
-            <div style="color: #666; font-size: 0.95rem;">In Progress</div>
+        <div class="metric-card card">
+            <div class="metric-number blue"><span id="inProgressCount">0</span></div>
+            <div class="metric-label">In Progress</div>
         </div>
-        <div class="card" style="text-align: center;">
-            <div style="font-size: 2.5rem; color: #28a745;"><span id="resolvedCount">0</span></div>
-            <div style="color: #666; font-size: 0.95rem;">Resolved</div>
+        <div class="metric-card card">
+            <div class="metric-number green"><span id="resolvedCount">0</span></div>
+            <div class="metric-label">Resolved</div>
         </div>
     </div>
 
     <!-- Tab Navigation - Hidden for admin -->
-    <div id="tabNav" style="margin-bottom: 2rem;">
-<div style="display: flex; gap: 1rem; border-bottom: 2px solid #e0e0e0; padding-bottom: 0.5rem;">
+    <div id="tabNav" class="tabs-wrap">
+        <div class="tabs">
             <button id="latestIncidentsTab" class="tab-button active" onclick="switchTab('latestIncidents')">Latest Incidents</button>
             <button id="myReportsTab" class="tab-button" onclick="switchTab('myReports')">My Reports</button>
             <button id="assignedIncidentsTab" class="tab-button" onclick="switchTab('assignedIncidents')" style="display: none;">Assigned Incidents</button>
@@ -48,7 +55,7 @@
     <!-- Tab Contents - Hidden for admin -->
     <div id="latestIncidentsContent" class="tab-content" style="display: block;">
         <div class="card">
-            <h3 style="margin-bottom: 1rem;">Recent Incidents</h3>
+            <h3>Recent Incidents</h3>
             <div id="incidentsList">
                 <p style="color: #666;">Loading incidents...</p>
             </div>
@@ -57,7 +64,7 @@
     
     <div id="myReportsContent" class="tab-content" style="display: none;">
         <div class="card">
-            <h3 style="margin-bottom: 1rem;">My Reports</h3>
+            <h3>My Reports</h3>
             <div id="myReportsList">
                 <p style="color: #666;">Loading your reports...</p>
             </div>
@@ -66,7 +73,7 @@
     
     <div id="assignedIncidentsContent" class="tab-content" style="display: none;">
         <div class="card">
-            <h3 style="margin-bottom: 1rem;">Incidents Assigned to Me</h3>
+            <h3>Incidents Assigned to Me</h3>
             <div id="assignedIncidentsList">
                 <p style="color: #666;">Loading assigned incidents...</p>
             </div>
@@ -75,7 +82,7 @@
     
     <div id="completedAssignmentsContent" class="tab-content" style="display: none;">
         <div class="card">
-            <h3 style="margin-bottom: 1rem;">Completed Assignments</h3>
+            <h3>Completed Assignments</h3>
             <div id="completedAssignmentsList">
                 <p style="color: #666;">Loading completed assignments...</p>
             </div>
@@ -180,13 +187,13 @@ const response = await fetch('/api/reports?limit=5');
                 html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.title}</td>`;
                 html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.incident_type}</td>`;
                 html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.status}</span></td>`;
-                html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span style="background: ${assignedColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${assignedName}</span></td>`;
+                html += `<td class="assigned-to-cell" style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;"><span class="assigned-badge" title="${assignedName}" style="background: ${assignedColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${assignedName}</span></td>`;
                 html += `<td style="padding: 0.75rem; border-bottom: 1px solid #e0e0e0;">${incident.location}</td>`;
                 html += '</tr>';
             });
             
             html += '</table>';
-            html += '<div style="text-align: center; margin-top: 1rem;"><a href="/reports" class="btn" style="background: #007bff; color: white; padding: 0.75rem 2rem; text-decoration: none; border-radius: 5px; font-weight: 500;">📋 Show More Reports</a></div>';
+            html += '<div style="text-align: center; margin-top: 1rem;"><a href="/reports" class="btn" style="background: #007bff; color: white; padding: 0.75rem 2rem; text-decoration: none; border-radius: 5px; font-weight: 500;">Show More Reports</a></div>';
             listDiv.innerHTML = html;
         } else {
             listDiv.innerHTML = '<p style="color: #666;">No incidents reported yet.</p>';
