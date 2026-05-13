@@ -1,15 +1,8 @@
 """
-Models package initialization
-"""
-from .user import User
-from .incident import Incident, IncidentStatus
-from .notification import Notification
-from .volunteer_skill import VolunteerSkill
+RESQ models package.
 
-__all__ = [
-    'User',
-    'Incident',
-    'IncidentStatus',
-    'Notification',
-    'VolunteerSkill'
-]
+Keep this module light to avoid circular-import issues during app startup.
+Import models directly from their modules (e.g., `from RESQ.models.incident import Incident`).
+Do NOT import models here - use lazy imports in each module.
+"""
+
