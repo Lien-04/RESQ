@@ -97,6 +97,73 @@
 </div>
 
 <script>
+// ==================== NOTIFICATION SYSTEM ====================
+function showNotification(message, type = 'success', duration = 1000) {
+    // Remove existing notification if any
+    const existingNotif = document.getElementById('notificationPopup');
+    if (existingNotif) existingNotif.remove();
+    
+    // Create notification element
+    const notif = document.createElement('div');
+    notif.id = 'notificationPopup';
+    notif.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-in-out;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    // Set color based on type
+    const colors = {
+        'success': '#28a745',
+        'error': '#dc3545',
+        'warning': '#ffc107',
+        'info': '#17a2b8'
+    };
+    notif.style.backgroundColor = colors[type] || colors['success'];
+    notif.textContent = message;
+    
+    document.body.appendChild(notif);
+    
+    // Auto-remove after duration
+    setTimeout(() => {
+        notif.style.animation = 'slideOut 0.3s ease-in-out';
+        setTimeout(() => notif.remove(), 300);
+    }, duration);
+}
+
+// Add CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
 document.addEventListener('DOMContentLoaded', function() {
     loadStatistics();
     loadUsers();
@@ -396,17 +463,17 @@ async function deleteUser(userId) {
         const data = await response.json();
         
         if (response.ok) {
-            alert('User deleted successfully!');
+            showNotification('User deleted successfully!', 'success', 1500);
             loadUsers();
             loadVolunteers();
             loadCitizens();
             loadAdmins();
             loadStatistics();
         } else {
-            alert(data.error || 'Failed to delete user');
+            showNotification(data.error || 'Failed to delete user', 'error', 2000);
         }
     } catch (error) {
-        alert('Error deleting user');
+        showNotification('Error deleting user', 'error', 2000);
     }
 }
 
@@ -430,13 +497,13 @@ async function addSkillToVolunteer(volunteerId, skillName, proficiencyLevel) {
         const data = await response.json();
         
         if (response.ok) {
-            alert('Skill added successfully!');
+            showNotification('Skill added successfully!', 'success', 1500);
             loadVolunteers();
         } else {
-            alert(data.error || 'Failed to add skill');
+            showNotification(data.error || 'Failed to add skill', 'error', 2000);
         }
     } catch (error) {
-        alert('Error adding skill');
+        showNotification('Error adding skill', 'error', 2000);
     }
 }
 
@@ -482,7 +549,7 @@ async function submitAssignment() {
     const volunteerId = document.getElementById('assignmentVolunteer').value;
     
     if (!volunteerId) {
-        alert('Please select a volunteer');
+        showNotification('Please select a volunteer', 'warning', 1500);
         return;
     }
     
@@ -495,15 +562,15 @@ async function submitAssignment() {
         const data = await response.json();
         
         if (response.ok) {
-            alert('Incident assigned successfully!');
+            showNotification('✓ Incident assigned successfully!', 'success', 1500);
             loadAdminIncidents();
             closeAssignmentModal();
         } else {
-            alert(data.error || 'Failed to assign incident');
+            showNotification(data.error || 'Failed to assign incident', 'error', 2000);
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error assigning incident');
+        showNotification('Error assigning incident', 'error', 2000);
     }
 }
 
@@ -517,14 +584,14 @@ async function verifyAdminIncident(incidentId) {
         const data = await response.json();
         
         if (response.ok) {
-            alert('Incident verified successfully!');
+            showNotification('✓ Incident verified successfully!', 'success', 1500);
             loadAdminIncidents();
         } else {
-            alert(data.error || 'Failed to verify incident');
+            showNotification(data.error || 'Failed to verify incident', 'error', 2000);
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error verifying incident');
+        showNotification('Error verifying incident', 'error', 2000);
     }
 }
 
