@@ -45,7 +45,7 @@ def create_app(config_name='development'):
 
         # Initialize sample data if database is empty
         if User.query.count() == 0:
-            from database.init_db import init_database
+            from .database.init_db import init_database
             init_database()
     
     # Register blueprints
