@@ -47,7 +47,6 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    const alertDiv = document.getElementById('alertMessage');
     
     try {
         const response = await fetch('/api/login', {
@@ -59,17 +58,31 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         const data = await response.json();
         
         if (response.ok) {
-            // Store user info in sessionStorage
-            sessionStorage.setItem('user', JSON.stringify(data.user));
-            // Redirect to dashboard
-            window.location.href = '/dashboard';
+            showModal(
+                '✓ Welcome Back!',
+                `Login successful! Redirecting to dashboard...`,
+                'success',
+                'Continue',
+                () => {
+                    sessionStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/dashboard';
+                }
+            );
         } else {
-            alertDiv.textContent = data.error || 'Login failed';
-            alertDiv.style.display = 'block';
+            showModal(
+                'Login Failed',
+                data.error || 'Invalid credentials. Please try again.',
+                'error',
+                'OK'
+            );
         }
     } catch (error) {
-        alertDiv.textContent = 'An error occurred. Please try again.';
-        alertDiv.style.display = 'block';
+        showModal(
+            'Error',
+            'An error occurred. Please try again.',
+            'error',
+            'OK'
+        );
     }
 });
 </script>

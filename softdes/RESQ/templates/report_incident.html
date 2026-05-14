@@ -90,28 +90,30 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
         description: document.getElementById('description').value
     };
     
-    const alertDiv = document.getElementById('alertMessage');
-    const errorDiv = document.getElementById('errorMessage');
-    
-    // Validate incident type (FROM FIRST - KEEP)
+    // Validate incident type
     if (!formData.incident_type) {
-        errorDiv.textContent = 'Please select an incident type';
-        errorDiv.style.display = 'block';
+        showModal(
+            'Missing Information',
+            'Please select an incident type',
+            'warning',
+            'OK'
+        );
         return;
     }
 
-    // Clear previous messages
-    errorDiv.style.display = 'none';
-    alertDiv.style.display = 'none';
-
     try {
-        // 🔥 IMPORTANT: Auth check (FROM FIRST - KEEP)
+        // Auth check
         const meResp = await fetch('/api/me');
         if (meResp.status === 401) {
-            const msg = 'Please login again to submit a report.';
-            errorDiv.textContent = msg;
-            errorDiv.style.display = 'block';
-            showNotification('✗ ' + msg, 'error', 2500);
+            showModal(
+                'Authentication Required',
+                'Please login again to submit a report.',
+                'error',
+                'Go to Login',
+                () => {
+                    window.location.href = '/login';
+                }
+            );
             return;
         }
 
@@ -129,35 +131,34 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
         }
 
         if (response.ok) {
-            // ✅ Use notification system (FROM FIRST)
-            showNotification('✓ Incident reported successfully!', 'success', 2000);
-
-            errorDiv.style.display = 'none';
-            alertDiv.style.display = 'none';
-
+            // Show success modal
+            showModal(
+                '✓ Report Submitted!',
+                `Your incident report has been received and will be reviewed by responders. Redirecting to dashboard...`,
+                'success',
+                'View Dashboard',
+                () => {
+                    window.location.href = '/dashboard';
+                }
+            );
+            
             document.getElementById('incidentForm').reset();
-
-            setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 2000);
         } else {
             const errorMsg = data?.error || 'Failed to report incident';
-
-            errorDiv.textContent = errorMsg;
-            errorDiv.style.display = 'block';
-            alertDiv.style.display = 'none';
-
-            showNotification('✗ ' + errorMsg, 'error', 2500);
-            console.error('Report submission error:', errorMsg, 'Status:', response.status);
+            showModal(
+                'Submission Failed',
+                errorMsg,
+                'error',
+                'OK'
+            );
         }
     } catch (error) {
-        const errorMsg = 'An error occurred. Please try again.';
-        
-        errorDiv.textContent = errorMsg;
-        errorDiv.style.display = 'block';
-
-        showNotification('✗ ' + errorMsg, 'error', 2500);
-        console.error('Report submission error:', error);
+        showModal(
+            'Error',
+            'An error occurred. Please try again.',
+            'error',
+            'OK'
+        );
     }
 });
 </script>

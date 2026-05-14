@@ -35,50 +35,64 @@
 async function sendBroadcast() {
     const title = document.getElementById('broadcastTitle').value.trim() || 'System Announcement';
     const message = document.getElementById('broadcastMessage').value.trim();
-    const resultDiv = document.getElementById('broadcastResult');
 
-    // Validation (from 1st)
+    // Validation
     if (!message) {
-        resultDiv.style.display = 'block';
-        resultDiv.style.background = '#f8d7da';
-        resultDiv.style.color = '#721c24';
-        resultDiv.textContent = 'Please provide a message for the broadcast.';
+        showModal(
+            'Missing Message',
+            'Please provide a message for the broadcast.',
+            'warning',
+            'OK'
+        );
         return;
     }
 
-    // Simple confirm (stable, no dependency)
-    if (!confirm('Send this broadcast to all users?')) return;
+    // Show confirmation modal
+    showModal(
+        'Confirm Broadcast',
+        `Send this announcement to all users?\n\nTitle: "${title}"\n\nMessage: "${message}"`,
+        'question',
+        'Yes, Send Broadcast',
+        async () => {
+            try {
+                const response = await fetch('/api/admin/broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, message })
+                });
 
-    try {
-        // Backend route preserved
-        const response = await fetch('/api/admin/broadcast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title, message })
-        });
+                const data = await response.json();
 
-        const data = await response.json();
-
-        if (response.ok) {
-            resultDiv.style.display = 'block';
-            resultDiv.style.background = '#d4edda';
-            resultDiv.style.color = '#155724';
-            resultDiv.textContent = data.message || 'Broadcast sent successfully.';
-            
-            document.getElementById('broadcastMessage').value = '';
-        } else {
-            resultDiv.style.display = 'block';
-            resultDiv.style.background = '#f8d7da';
-            resultDiv.style.color = '#721c24';
-            resultDiv.textContent = data.error || 'Failed to send broadcast.';
+                if (response.ok) {
+                    showModal(
+                        '✓ Broadcast Sent!',
+                        'Your announcement has been sent to all users successfully.',
+                        'success',
+                        'OK',
+                        () => {
+                            document.getElementById('broadcastMessage').value = '';
+                            document.getElementById('broadcastTitle').value = '';
+                        }
+                    );
+                } else {
+                    showModal(
+                        'Failed to Send',
+                        data.error || 'Failed to send broadcast.',
+                        'error',
+                        'OK'
+                    );
+                }
+            } catch (error) {
+                console.error(error);
+                showModal(
+                    'Error',
+                    'Unexpected error while sending broadcast.',
+                    'error',
+                    'OK'
+                );
+            }
         }
-    } catch (error) {
-        console.error(error);
-        resultDiv.style.display = 'block';
-        resultDiv.style.background = '#f8d7da';
-        resultDiv.style.color = '#721c24';
-        resultDiv.textContent = 'Unexpected error while sending broadcast.';
-    }
+    );
 }
 </script>
 

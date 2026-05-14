@@ -107,8 +107,7 @@ document.getElementById('registerForm').addEventListener('submit', async functio
     
     // Validate role
     if (!formData.role) {
-        alertDiv.textContent = 'Please select a role';
-        alertDiv.style.display = 'block';
+        showModal('Required Field', 'Please select a role', 'warning', 'OK');
         return;
     }
     
@@ -122,15 +121,21 @@ document.getElementById('registerForm').addEventListener('submit', async functio
         const data = await response.json();
         
         if (response.ok) {
-            sessionStorage.setItem('user', JSON.stringify(data.user));
-            window.location.href = '/dashboard';
+            showModal(
+                '🎉 Welcome to RESQ!',
+                `Your account has been created successfully, ${formData.full_name}! Redirecting to dashboard...`,
+                'success',
+                'Let\'s Go!',
+                () => {
+                    sessionStorage.setItem('user', JSON.stringify(data.user));
+                    window.location.href = '/dashboard';
+                }
+            );
         } else {
-            alertDiv.textContent = data.error || 'Registration failed';
-            alertDiv.style.display = 'block';
+            showModal('Registration Error', data.error || 'Registration failed. Please try again.', 'error', 'OK');
         }
     } catch (error) {
-        alertDiv.textContent = 'An error occurred. Please try again.';
-        alertDiv.style.display = 'block';
+        showModal('Error', 'An error occurred. Please try again.', 'error', 'OK');
     }
 });
 </script>

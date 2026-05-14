@@ -42,7 +42,295 @@
         <p>&copy; 2024 RESQ - Disaster Response Coordination Platform | Built with Flask</p>
     </footer>
     
+    <!-- MODERN MODAL SYSTEM -->
+    <div id="modalOverlay" class="modal-overlay"></div>
+    <div id="modernModal" class="modern-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon" id="modalIcon"></div>
+                <h2 id="modalTitle">Confirm Action</h2>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" id="modalConfirmBtn" onclick="confirmModalAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
+        // ==================== MODERN MODAL SYSTEM ====================
+        let modalCallback = null;
+        
+        // Add modal CSS
+        const modalStyle = document.createElement('style');
+        modalStyle.textContent = `
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(4px);
+                z-index: 9999;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s ease;
+            }
+            
+            .modal-overlay.active {
+                opacity: 1;
+                visibility: visible;
+            }
+            
+            .modern-modal {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) scale(0.9);
+                z-index: 10000;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+                pointer-events: none;
+            }
+            
+            .modern-modal.active {
+                opacity: 1;
+                visibility: visible;
+                transform: translate(-50%, -50%) scale(1);
+                pointer-events: auto;
+            }
+            
+            .modal-content {
+                background: white;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+                overflow: hidden;
+                max-width: 450px;
+                width: 90vw;
+                animation: modalSlideIn 0.3s ease;
+            }
+            
+            .modal-close {
+                position: absolute;
+                top: 16px;
+                right: 16px;
+                background: none;
+                border: none;
+                font-size: 28px;
+                cursor: pointer;
+                color: #999;
+                width: 32px;
+                height: 32px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+                transition: all 0.2s;
+                z-index: 10;
+            }
+            
+            .modal-close:hover {
+                background: #f0f0f0;
+                color: #333;
+                transform: rotate(90deg);
+            }
+            
+            .modal-header {
+                padding: 2.5rem 2rem 1.5rem;
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .modal-icon {
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 32px;
+                background: #e8f4fd;
+            }
+            
+            .modal-icon.success {
+                background: #d4edda;
+                color: #28a745;
+            }
+            
+            .modal-icon.error {
+                background: #f8d7da;
+                color: #dc3545;
+            }
+            
+            .modal-icon.warning {
+                background: #fff3cd;
+                color: #ffc107;
+            }
+            
+            .modal-icon.info {
+                background: #d1ecf1;
+                color: #17a2b8;
+            }
+            
+            .modal-title {
+                margin: 0;
+                font-size: 1.5rem;
+                color: #1e3c72;
+                font-weight: 600;
+            }
+            
+            #modalTitle {
+                margin: 0;
+                font-size: 1.4rem;
+                color: #1e3c72;
+                font-weight: 600;
+            }
+            
+            .modal-body {
+                padding: 1rem 2rem;
+                text-align: center;
+            }
+            
+            #modalMessage {
+                margin: 0;
+                color: #666;
+                font-size: 1rem;
+                line-height: 1.5;
+            }
+            
+            .modal-footer {
+                padding: 1.5rem 2rem;
+                display: flex;
+                gap: 1rem;
+                justify-content: flex-end;
+                border-top: 1px solid #e8e8e8;
+            }
+            
+            .modal-footer .btn {
+                flex: 1;
+                padding: 0.75rem 1.5rem;
+                border: none;
+                border-radius: 8px;
+                font-size: 1rem;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .btn-primary {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+            
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            }
+            
+            .btn-secondary {
+                background: #f0f0f0;
+                color: #333;
+            }
+            
+            .btn-secondary:hover {
+                background: #e0e0e0;
+            }
+            
+            @keyframes modalSlideIn {
+                from {
+                    opacity: 0;
+                    transform: scale(0.95);
+                }
+                to {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+            }
+        `;
+        document.head.appendChild(modalStyle);
+        
+        function showModal(title, message, iconType = 'info', confirmText = 'Confirm', callback = null) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('modalConfirmBtn').textContent = confirmText;
+            
+            // Update icon
+            const iconEl = document.getElementById('modalIcon');
+            iconEl.className = 'modal-icon ' + iconType;
+            
+            const icons = {
+                'success': '✓',
+                'error': '✕',
+                'warning': '⚠',
+                'info': 'ℹ',
+                'question': '?'
+            };
+            iconEl.textContent = icons[iconType] || '●';
+            
+            // Update button color based on type
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            confirmBtn.classList.remove('btn-primary', 'btn-danger', 'btn-warning');
+            
+            if (iconType === 'error') {
+                confirmBtn.classList.add('btn-danger');
+                confirmBtn.style.background = '#dc3545';
+            } else if (iconType === 'warning') {
+                confirmBtn.classList.add('btn-warning');
+                confirmBtn.style.background = '#ffc107';
+                confirmBtn.style.color = '#000';
+            } else {
+                confirmBtn.classList.add('btn-primary');
+                confirmBtn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                confirmBtn.style.color = 'white';
+            }
+            
+            // Store callback
+            modalCallback = callback;
+            
+            // Show modal with animation
+            const modal = document.getElementById('modernModal');
+            const overlay = document.getElementById('modalOverlay');
+            
+            modal.classList.add('active');
+            overlay.classList.add('active');
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('modernModal');
+            const overlay = document.getElementById('modalOverlay');
+            
+            modal.classList.remove('active');
+            overlay.classList.remove('active');
+            
+            modalCallback = null;
+        }
+        
+        function confirmModalAction() {
+            if (modalCallback) {
+                modalCallback();
+            }
+            closeModal();
+        }
+        
+        // Close modal on overlay click
+        document.getElementById('modalOverlay').addEventListener('click', closeModal);
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
         // ==================== NOTIFICATION SYSTEM ====================
         function showNotification(message, type = 'success', duration = 1000) {
             // Remove existing notification if any
@@ -125,13 +413,19 @@
             if (event) {
                 event.preventDefault();
             }
-            if (confirm('Are you sure you want to logout?')) {
-                await fetch('/api/logout', { method: 'POST' });
-                showNotification('✓ Logged out successfully!', 'info', 1500);
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1500);
-            }
+            showModal(
+                'Logout',
+                'Are you sure you want to logout?',
+                'question',
+                'Yes, Logout',
+                async () => {
+                    await fetch('/api/logout', { method: 'POST' });
+                    showNotification('✓ Logged out successfully!', 'success', 1500);
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                }
+            );
         }
         window.logout = logout;
         

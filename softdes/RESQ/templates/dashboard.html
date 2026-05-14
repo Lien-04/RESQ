@@ -168,13 +168,32 @@ async function loadLatestIncidents() {
         let html = '';
         if (data.incidents && data.incidents.length > 0) {
             data.incidents.forEach(incident => {
+                const statusColors = {
+                    'pending': '#ffc107',
+                    'verified': '#17a2b8',
+                    'in_progress': '#0275d8',
+                    'resolved': '#28a745'
+                };
+                
+                let actionButtons = '';
+                if (currentUser && currentUser.role === 'admin') {
+                    actionButtons = `
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'verified', '${incident.title}')">✓ Verify</button>
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'in_progress', '${incident.title}')">⚡ In Progress</button>
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'resolved', '${incident.title}')">✓ Resolve</button>
+                        </div>
+                    `;
+                }
+                
                 html += `
-                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #ff6b35;">
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#ff6b35'};">
                         <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
-                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${incident.status}</span></p>
                         <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Reported: ${new Date(incident.created_at).toLocaleString()}</p>
+                        ${actionButtons}
                     </div>
                 `;
             });
@@ -200,12 +219,19 @@ async function loadMyReports() {
         let html = '';
         if (data.incidents && data.incidents.length > 0) {
             data.incidents.forEach(incident => {
+                const statusColors = {
+                    'pending': '#ffc107',
+                    'verified': '#17a2b8',
+                    'in_progress': '#0275d8',
+                    'resolved': '#28a745'
+                };
+                
                 html += `
-                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #5cb85c;">
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#5cb85c'};">
                         <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
-                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${incident.status}</span></p>
                         <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Reported: ${new Date(incident.created_at).toLocaleString()}</p>
                     </div>
                 `;
@@ -232,13 +258,31 @@ async function loadAssignedIncidents() {
         let html = '';
         if (data.incidents && data.incidents.length > 0) {
             data.incidents.forEach(incident => {
+                const statusColors = {
+                    'pending': '#ffc107',
+                    'verified': '#17a2b8',
+                    'in_progress': '#0275d8',
+                    'resolved': '#28a745'
+                };
+                
+                let actionButtons = '';
+                if (currentUser && currentUser.role === 'volunteer') {
+                    actionButtons = `
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'in_progress', '${incident.title}')">⚡ Start</button>
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'resolved', '${incident.title}')">✓ Complete</button>
+                        </div>
+                    `;
+                }
+                
                 html += `
-                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #0275d8;">
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#0275d8'};">
                         <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
-                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${incident.status}</span></p>
                         <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Assigned: ${new Date(incident.created_at).toLocaleString()}</p>
+                        ${actionButtons}
                     </div>
                 `;
             });
@@ -264,12 +308,19 @@ async function loadCompletedAssignments() {
         let html = '';
         if (data.incidents && data.incidents.length > 0) {
             data.incidents.forEach(incident => {
+                const statusColors = {
+                    'pending': '#ffc107',
+                    'verified': '#17a2b8',
+                    'in_progress': '#0275d8',
+                    'resolved': '#28a745'
+                };
+                
                 html += `
-                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #5cb85c;">
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#5cb85c'};">
                         <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
-                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${incident.status}</span></p>
                         <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Completed: ${new Date(incident.created_at).toLocaleString()}</p>
                     </div>
                 `;
@@ -319,6 +370,88 @@ async function loadAdminStats() {
         console.error('Error loading admin stats:', error);
     }
 }
+
+// ==================== STATUS UPDATE WITH MODAL ====================
+async function updateIncidentStatus(incidentId, newStatus, title) {
+    const statusMessages = {
+        'verified': 'Mark this incident as verified?',
+        'in_progress': 'Start responding to this incident?',
+        'resolved': 'Mark this incident as resolved?'
+    };
+    
+    const statusEmojis = {
+        'verified': 'info',
+        'in_progress': 'question',
+        'resolved': 'success'
+    };
+    
+    const statusLabels = {
+        'verified': 'Verify',
+        'in_progress': 'Start Work',
+        'resolved': 'Complete'
+    };
+    
+    showModal(
+        `${statusLabels[newStatus]} Incident`,
+        `${statusMessages[newStatus]}\n\n"${title}"`,
+        statusEmojis[newStatus],
+        `Yes, ${statusLabels[newStatus].toLowerCase()}`,
+        async () => {
+            try {
+                const response = await fetch(`/api/reports/${incidentId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (response.ok) {
+                    showNotification(`✓ Status updated to "${newStatus}"!`, 'success', 2000);
+                    
+                    // Reload the appropriate list
+                    if (currentUser.role === 'admin') {
+                        await loadLatestIncidents();
+                    } else if (currentUser.role === 'volunteer') {
+                        await loadAssignedIncidents();
+                    } else {
+                        await loadMyReports();
+                    }
+                } else {
+                    const data = await response.json();
+                    showNotification(`✕ ${data.error || 'Failed to update status'}`, 'error', 2000);
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                showNotification('✕ Error updating status', 'error', 2000);
+            }
+        }
+    );
+}
+
+// Add CSS for buttons
+const dashboardStyle = document.createElement('style');
+dashboardStyle.textContent = `
+    .btn-small {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+    
+    .btn-small:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-small:active {
+        transform: translateY(0);
+    }
+`;
+document.head.appendChild(dashboardStyle);
 
 </script>
 
