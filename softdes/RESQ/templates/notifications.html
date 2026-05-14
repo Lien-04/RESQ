@@ -42,10 +42,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     setInterval(() => loadNotifications(), 3000);
 });
 
+let previousNotificationsData = null;
+
 async function loadNotifications() {
     try {
         const response = await fetch('/api/notifications');
         const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.notifications) === JSON.stringify(previousNotificationsData)) {
+            return; // No change, skip update
+        }
+        previousNotificationsData = data.notifications;
 
         const listDiv = document.getElementById('notificationsList');
         

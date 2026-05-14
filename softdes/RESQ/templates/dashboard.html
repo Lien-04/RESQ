@@ -92,6 +92,11 @@
 
 <script>
 let currentUser = null;
+let previousIncidentsData = null;
+let previousMyReportsData = null;
+let previousAssignedData = null;
+let previousCompletedData = null;
+let previousAdminStats = null;
 
 // SAME BACKEND LOGIC (UNCHANGED)
 document.addEventListener('DOMContentLoaded', async function() {
@@ -181,6 +186,12 @@ async function loadLatestIncidents() {
         }
         const data = await response.json();
         
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousIncidentsData)) {
+            return; // No change, skip update
+        }
+        previousIncidentsData = data.incidents;
+        
         let html = '';
         if (data.incidents && data.incidents.length > 0) {
             data.incidents.forEach(incident => {
@@ -232,6 +243,12 @@ async function loadMyReports() {
         }
         const data = await response.json();
         
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousMyReportsData)) {
+            return; // No change, skip update
+        }
+        previousMyReportsData = data.incidents;
+        
         let html = '';
         if (data.incidents && data.incidents.length > 0) {
             data.incidents.forEach(incident => {
@@ -270,6 +287,12 @@ async function loadAssignedIncidents() {
             throw new Error('Failed to fetch assigned incidents');
         }
         const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousAssignedData)) {
+            return; // No change, skip update
+        }
+        previousAssignedData = data.incidents;
         
         let html = '';
         if (data.incidents && data.incidents.length > 0) {
@@ -325,6 +348,12 @@ async function loadCompletedAssignments() {
             throw new Error('Failed to fetch completed assignments');
         }
         const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousCompletedData)) {
+            return; // No change, skip update
+        }
+        previousCompletedData = data.incidents;
         
         let html = '';
         if (data.incidents && data.incidents.length > 0) {
@@ -382,6 +411,12 @@ async function loadAdminStats() {
                 }
             });
         }
+        
+        const newStats = { total, pending, inProgress, resolved };
+        if (JSON.stringify(newStats) === JSON.stringify(previousAdminStats)) {
+            return; // No change, skip update
+        }
+        previousAdminStats = newStats;
         
         document.getElementById('totalIncidentsCount').textContent = total;
         document.getElementById('pendingCount').textContent = pending;

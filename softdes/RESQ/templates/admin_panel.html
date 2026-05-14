@@ -215,16 +215,32 @@ async function loadVolunteers(){
 
 // ---------------- INCIDENTS ----------------
 let currentIncidentTab = 'active';
+let previousAdminIncidentsData = null;
+let previousCompletedIncidentsData = null;
 
 async function loadAdminIncidents(){
     const res = await fetch('/api/admin/incidents?exclude_status=resolved&limit=6');
     const data = await res.json();
+    
+    // Check if data changed
+    if (JSON.stringify(data.incidents) === JSON.stringify(previousAdminIncidentsData)) {
+        return; // No change, skip update
+    }
+    previousAdminIncidentsData = data.incidents;
+    
     renderAdminIncidentList(data.incidents, false, '/reports');
 }
 
 async function loadCompletedIncidents(){
     const res = await fetch('/api/admin/incidents?status=resolved&limit=6');
     const data = await res.json();
+    
+    // Check if data changed
+    if (JSON.stringify(data.incidents) === JSON.stringify(previousCompletedIncidentsData)) {
+        return; // No change, skip update
+    }
+    previousCompletedIncidentsData = data.incidents;
+    
     renderAdminIncidentList(data.incidents, true, '/reports?status=resolved');
 }
 

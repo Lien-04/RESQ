@@ -430,14 +430,25 @@
         window.logout = logout;
         
         // Check for unread notifications
+        let previousUnreadCount = null;
+
         async function checkUnreadNotifications() {
             try {
                 const response = await fetch('/api/notifications/unread');
                 if (response.ok) {
                     const data = await response.json();
+                    
+                    // Check if count changed
+                    if (data.unread_count === previousUnreadCount) {
+                        return; // No change, skip update
+                    }
+                    previousUnreadCount = data.unread_count;
+                    
                     const notificationsTab = document.getElementById('notificationsTab');
                     if (notificationsTab && data.unread_count > 0) {
                         notificationsTab.innerHTML = `Notifications <span style="background: red; color: white; border-radius: 50%; padding: 0.1rem 0.3rem; font-size: 0.7rem; margin-left: 0.25rem;">${data.unread_count}</span>`;
+                    } else if (notificationsTab) {
+                        notificationsTab.innerHTML = 'Notifications';
                     }
                 }
             } catch (error) {

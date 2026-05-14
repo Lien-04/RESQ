@@ -177,6 +177,7 @@ async function loadSingleIncident(id) {
 
 let currentUserRole = null;
 let currentUserId = null;
+let previousViewIncidentsData = null;
 
 async function loadUserRole() {
     try {
@@ -207,6 +208,12 @@ async function loadIncidents() {
     try {
         const response = await fetch(url);
         const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousViewIncidentsData)) {
+            return; // No change, skip update
+        }
+        previousViewIncidentsData = data.incidents;
         
         const container = document.getElementById('incidentsContainer');
         
