@@ -104,6 +104,16 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStatistics();
     loadUsers();
     loadAdminIncidents();
+
+    // Realtime refresh every 30 seconds
+    setInterval(() => {
+        loadStatistics();
+        if (currentIncidentTab === 'active') {
+            loadAdminIncidents();
+        } else {
+            loadCompletedIncidents();
+        }
+    }, 30000);
 });
 
 // ---------------- TAB ----------------
@@ -268,7 +278,7 @@ function renderAdminIncidentList(incidents, completed, showMoreHref){
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
                     ${!completed ? `<button class="btn btn-secondary" onclick="assignIncident(${i.id})">Assign</button>` : ''}
-                    <button class="btn" onclick="toggleIncidentVerification(${i.id}, '${verifyActionStatus}')">${verifyButtonLabel}</button>
+                    ${!completed ? `<button class="btn" onclick="toggleIncidentVerification(${i.id}, '${verifyActionStatus}')">${verifyButtonLabel}</button>` : ''}
                 </div>
             </div>
         </div>`;

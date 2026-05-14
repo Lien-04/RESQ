@@ -96,7 +96,23 @@ let currentUser = null;
 // SAME BACKEND LOGIC (UNCHANGED)
 document.addEventListener('DOMContentLoaded', async function() {
     await loadUserInfo();
-    setupAdminView();
+    await setupAdminView();
+
+    // Realtime refresh every 30 seconds
+    setInterval(async () => {
+        await loadUserInfo();
+        if (currentUser && currentUser.role === 'admin') {
+            await loadAdminStats();
+            await loadLatestIncidents();
+        } else {
+            await loadLatestIncidents();
+            await loadMyReports();
+            if (currentUser && currentUser.role === 'volunteer') {
+                await loadAssignedIncidents();
+                await loadCompletedAssignments();
+            }
+        }
+    }, 30000);
 });
 
 async function setupAdminView() {

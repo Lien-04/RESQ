@@ -37,6 +37,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
     await loadNotifications();
+
+    // Realtime refresh every 30 seconds
+    setInterval(() => loadNotifications(), 30000);
 });
 
 async function loadNotifications() {
