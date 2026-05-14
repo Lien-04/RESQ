@@ -183,11 +183,20 @@ def get_all_incidents():
     GET /api/admin/incidents
     """
     status = request.args.get('status')
+    exclude_status = request.args.get('exclude_status')
     incident_type = request.args.get('type')
     limit = request.args.get('limit', 100, type=int)
-    
-    incidents = Incident.get_all(status=status, incident_type=incident_type, limit=limit)
-    
+
+    query = Incident.query
+    if status:
+        query = query.filter_by(status=status)
+    if exclude_status:
+        query = query.filter(Incident.status != exclude_status)
+    if incident_type:
+        query = query.filter_by(incident_type=incident_type)
+
+    incidents = query.order_by(Incident.created_at.desc()).limit(limit).all()
+
     return jsonify({
         'incidents': [i.to_detailed_dict() for i in incidents]
     }), 200
