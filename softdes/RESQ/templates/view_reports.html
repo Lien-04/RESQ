@@ -3,20 +3,13 @@
 {% block title %}View Reports - RESQ{% endblock %}
 
 {% block content %}
-<div class="view-reports page-stack">
-    <section class="page-hero compact">
-        <div>
-            <span class="eyebrow">Shared response board</span>
-            <h1>Incident Reports</h1>
-            <p>Scan active incidents, filter by urgency, and open details for the next action.</p>
-        </div>
-        <a class="btn btn-emergency" href="{{ url_for('report_incident_page') }}">New Report</a>
-    </section>
+<div class="view-reports">
+    <h1 style="margin-bottom: 1rem;">📋 Incident Reports</h1>
     
     <!-- Filters -->
-    <div id="filtersSection" class="card filters-card" style="display: none;">
-        <div class="filters-grid">
-            <div class="form-group">
+<div id="filtersSection" class="card" style="margin-bottom: 1rem;" style="display: none;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div class="form-group" style="margin-bottom: 0;">
                 <label for="filterStatus">Status</label>
                 <select id="filterStatus" onchange="loadIncidents()">
                     <option value="">All</option>
@@ -26,7 +19,7 @@
                     <option value="resolved">Resolved</option>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="margin-bottom: 0;">
                 <label for="filterType">Type</label>
                 <select id="filterType" onchange="loadIncidents()">
                     <option value="">All Types</option>
@@ -39,28 +32,10 @@
                     <option value="other">Other</option>
                 </select>
             </div>
-            <button class="btn" onclick="loadIncidents()">Filter</button>
+            <button class="btn" onclick="loadIncidents()">🔍 Filter</button>
         </div>
     </div>
 
-    <!-- Status Update Modal -->
-    <div id="statusModal" class="modal-backdrop" style="display: none;">
-        <div class="modal-card">
-            <h3 style="margin-top: 0;">Update Status</h3>
-            <div style="margin-bottom: 1rem;">
-                <label for="statusSelect" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">New Status:</label>
-                <select id="statusSelect">
-                    <option value="in_progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                </select>
-            </div>
-            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <button class="btn btn-secondary" onclick="closeStatusModal()">Cancel</button>
-                <button class="btn" onclick="confirmStatusUpdate()" style="background: #28a745;">Update</button>
-            </div>
-        </div>
-    </div>
-    
     <!-- Incidents List -->
     <div id="incidentsContainer">
         <p style="color: #666;">Loading incidents...</p>
@@ -68,6 +43,7 @@
 </div>
 
 <script>
+
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
     const incidentId = params.get('id');
@@ -291,89 +267,77 @@ function viewIncident(id) {
 }
 
 async function verifyIncident(id) {
-    const confirmed = await showConfirmModal({
-        title: 'Verify Incident',
-        message: 'Verify this incident so volunteers and coordinators can act on it?',
-        confirmText: 'Verify',
-        confirmClass: 'btn-confirm'
-    });
+    const confirmed = await showConfirmModal('Are you sure you want to verify this incident?', 'Verify Incident', 'Verify', 'Cancel');
     if (!confirmed) return;
-    
+
     try {
         const response = await fetch(`/api/reports/${id}/verify`, { method: 'POST' });
         const data = await response.json();
-        
+
         if (response.ok) {
-            await showMessageModal('Incident Verified', 'Incident verified successfully!', 'success');
+            showNotification('✓ Incident verified successfully!', 'success', 1500);
             loadIncidents();
         } else {
-            await showMessageModal('Verification Failed', data.error || 'Failed to verify incident', 'danger');
+            showNotification(data.error || 'Failed to verify incident', 'error', 2000);
         }
     } catch (error) {
-        await showMessageModal('Verification Error', 'Error verifying incident', 'danger');
-    }
-}
-
-let currentIncidentId = null;
-
-function showStatusModal(id) {
-    currentIncidentId = id;
-    document.getElementById('statusModal').style.display = 'block';
-}
-
-function closeStatusModal() {
-    document.getElementById('statusModal').style.display = 'none';
-    currentIncidentId = null;
-}
-
-async function confirmStatusUpdate() {
-    const newStatus = document.getElementById('statusSelect').value;
-    
-    try {
-        const response = await fetch(`/api/reports/${currentIncidentId}/status`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            await showMessageModal('Status Updated', 'Status updated successfully!', 'success');
-            
-            // VOLUNTEER REDIRECT: Go to dashboard after update
-            const userResponse = await fetch('/api/me');
-            const userData = await userResponse.json();
-            if (userData.user.role === 'volunteer') {
-                window.location.href = '/dashboard';
-            } else {
-                closeStatusModal();
-                const params = new URLSearchParams(window.location.search);
-                if (params.get('id')) {
-                    await loadSingleIncident(currentIncidentId);
-                } else {
-                    await loadIncidents();
-                }
-            }
-        } else {
-            await showMessageModal('Update Failed', data.error || 'Failed to update status', 'danger');
-        }
-    } catch (error) {
-        await showMessageModal('Update Error', 'Error updating status', 'danger');
         console.error(error);
+        showNotification('Error verifying incident', 'error', 2000);
     }
 }
-
-// Global click outside to close modal
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('statusModal');
-    if (event.target === modal) {
-        closeStatusModal();
-    }
-});
 
 function updateStatus(id) {
-    showStatusModal(id);
+    const body = `
+        <div class="form-group">
+            <label for="statusSelect">New Status</label>
+            <select id="statusSelect" class="form-control">
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+            </select>
+        </div>
+    `;
+
+    showFormModal({
+        title: 'Update Incident Status',
+        body,
+        confirmText: 'Update',
+        cancelText: 'Cancel',
+        onSubmit: async () => {
+            const newStatus = document.getElementById('statusSelect').value;
+            try {
+                const response = await fetch(`/api/reports/${id}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    showNotification('✓ Status updated successfully!', 'success', 1500);
+
+                    const userResponse = await fetch('/api/me');
+                    const userData = await userResponse.json();
+                    if (userData.user.role === 'volunteer') {
+                        setTimeout(() => {
+                            window.location.href = '/dashboard';
+                        }, 1500);
+                    } else {
+                        const params = new URLSearchParams(window.location.search);
+                        if (params.get('id')) {
+                            loadSingleIncident(id);
+                        } else {
+                            loadIncidents();
+                        }
+                    }
+                } else {
+                    showNotification(data.error || 'Failed to update status', 'error', 2000);
+                }
+            } catch (error) {
+                console.error(error);
+                showNotification('Error updating status', 'error', 2000);
+            }
+        }
+    });
 }
 </script>
 {% endblock %}

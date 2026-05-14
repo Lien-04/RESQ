@@ -3,78 +3,66 @@
 {% block title %}Report Incident - RESQ{% endblock %}
 
 {% block content %}
-<div class="report-incident page-stack">
-    <!-- Hero Section (from second UI) -->
-    <section class="page-hero compact">
-        <div>
-            <span class="eyebrow">Citizen report</span>
-            <h1>📢 Report New Incident</h1>
-            <p>Share clear details so responders can verify, prioritize, and coordinate quickly.</p>
-        </div>
-    </section>
+<div class="report-incident">
+    <h1 style="margin-bottom: 1rem;">📢 Report New Incident</h1>
     
-    <div class="form-layout">
-        <!-- FORM CARD -->
-        <div class="card form-card">
-            <div id="alertMessage" class="alert alert-success" style="display: none;"></div>
-            <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
-            
-            <form id="incidentForm">
-                <div class="form-group">
-                    <label for="title">Title *</label>
-                    <input type="text" id="title" name="title" required placeholder="Brief title of the incident">
-                </div>
-                
-                <div class="form-group">
-                    <label for="incident_type">Incident Type *</label>
-                    <select id="incident_type" name="incident_type" required>
-                        <option value="">Select incident type</option>
-                        <option value="fire">🔥 Fire</option>
-                        <option value="flood">🌊 Flood</option>
-                        <option value="earthquake">🌍 Earthquake</option>
-                        <option value="storm">⛈️ Storm</option>
-                        <option value="medical">🏥 Medical Emergency</option>
-                        <option value="traffic">🚗 Traffic Accident</option>
-                        <option value="other">❓ Other</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="location">Location *</label>
-                    <input type="text" id="location" name="location" required placeholder="Address or location description">
-                </div>
-                
-                <div class="form-group">
-                    <label for="priority">Priority</label>
-                    <select id="priority" name="priority">
-                        <option value="normal">Normal</option>
-                        <option value="high">High</option>
-                        <option value="critical">Critical</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="description">Description *</label>
-                    <textarea id="description" name="description" rows="5" required placeholder="Detailed description of the incident..."></textarea>
-                </div>
-                
-                <button type="submit" class="btn btn-emergency btn-block">
-                    📨 Submit Report
-                </button>
-            </form>
-        </div>
+    <div class="card" style="max-width: 600px;">
+        <div id="alertMessage" class="alert alert-success" style="display: none;"></div>
+        <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
         
-        <!-- TIPS CARD (styled from second, content from first) -->
-        <div class="card tips-card">
-            <h3>💡 Tips for Reporting</h3>
-            <ul>
-                <li>Provide accurate location information</li>
-                <li>Describe what you see, hear, or smell</li>
-                <li>Mention any immediate dangers</li>
-                <li>Include number of people affected if known</li>
-                <li>Stay calm and stay safe while reporting</li>
-            </ul>
-        </div>
+        <form id="incidentForm">
+            <div class="form-group">
+                <label for="title">Title *</label>
+                <input type="text" id="title" name="title" required placeholder="Brief title of the incident">
+            </div>
+            
+            <div class="form-group">
+                <label for="incident_type">Incident Type *</label>
+                <select id="incident_type" name="incident_type" required>
+                    <option value="">Select incident type</option>
+                    <option value="fire">🔥 Fire</option>
+                    <option value="flood">🌊 Flood</option>
+                    <option value="earthquake">🌍 Earthquake</option>
+                    <option value="storm">⛈️ Storm</option>
+                    <option value="medical">🏥 Medical Emergency</option>
+                    <option value="traffic">🚗 Traffic Accident</option>
+                    <option value="other">❓ Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="location">Location *</label>
+                <input type="text" id="location" name="location" required placeholder="Address or location description">
+            </div>
+            
+            <div class="form-group">
+                <label for="priority">Priority</label>
+                <select id="priority" name="priority">
+                    <option value="normal">Normal</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description *</label>
+                <textarea id="description" name="description" rows="5" required placeholder="Detailed description of the incident..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn" style="width: 100%;">📨 Submit Report</button>
+        </form>
+    </div>
+    
+    <!-- Tips Card -->
+    <div class="card" style="max-width: 600px; margin-top: 1rem;">
+        <h3 style="margin-bottom: 0.5rem;">💡 Tips for Reporting</h3>
+        <ul style="color: #666; padding-left: 1.2rem;">
+            <li>Provide accurate location information</li>
+            <li>Describe what you see, hear, or smell</li>
+            <li>Mention any immediate dangers</li>
+            <li>Include number of people affected if known</li>
+            <li>Stay calm and stay safe while reporting</li>
+        </ul>
     </div>
 </div>
 
@@ -93,7 +81,7 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
     const alertDiv = document.getElementById('alertMessage');
     const errorDiv = document.getElementById('errorMessage');
     
-    // Validate incident type (FROM FIRST - KEEP)
+    // Validate incident type
     if (!formData.incident_type) {
         errorDiv.textContent = 'Please select an incident type';
         errorDiv.style.display = 'block';
@@ -105,7 +93,7 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
     alertDiv.style.display = 'none';
 
     try {
-        // 🔥 IMPORTANT: Auth check (FROM FIRST - KEEP)
+        // Pre-check auth so we can show a meaningful error
         const meResp = await fetch('/api/me');
         if (meResp.status === 401) {
             const msg = 'Please login again to submit a report.';
@@ -121,6 +109,7 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
             body: JSON.stringify(formData)
         });
 
+        // Try to parse JSON error/success payload
         let data = null;
         try {
             data = await response.json();
@@ -129,33 +118,29 @@ document.getElementById('incidentForm').addEventListener('submit', async functio
         }
 
         if (response.ok) {
-            // ✅ Use notification system (FROM FIRST)
             showNotification('✓ Incident reported successfully!', 'success', 2000);
-
             errorDiv.style.display = 'none';
             alertDiv.style.display = 'none';
 
+            // Reset form
             document.getElementById('incidentForm').reset();
 
+            // Redirect after short delay
             setTimeout(() => {
                 window.location.href = '/dashboard';
             }, 2000);
         } else {
             const errorMsg = data?.error || 'Failed to report incident';
-
             errorDiv.textContent = errorMsg;
             errorDiv.style.display = 'block';
             alertDiv.style.display = 'none';
-
             showNotification('✗ ' + errorMsg, 'error', 2500);
             console.error('Report submission error:', errorMsg, 'Status:', response.status);
         }
     } catch (error) {
         const errorMsg = 'An error occurred. Please try again.';
-        
         errorDiv.textContent = errorMsg;
         errorDiv.style.display = 'block';
-
         showNotification('✗ ' + errorMsg, 'error', 2500);
         console.error('Report submission error:', error);
     }

@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}RESQ - Disaster Response{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/resq-logo.png') }}">
 
 </head>
 <body>
@@ -41,15 +40,24 @@
     <footer>
         <p>&copy; 2024 RESQ - Disaster Response Coordination Platform | Built with Flask</p>
     </footer>
-    
+
+    <div id="appModalOverlay" class="app-modal-overlay" hidden>
+        <div class="app-modal-window" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+            <div class="app-modal-header">
+                <h2 id="appModalTitle">Modal</h2>
+                <button type="button" class="app-modal-close-btn" aria-label="Close modal" onclick="closeAppModal()">×</button>
+            </div>
+            <div class="app-modal-body" id="appModalBody"></div>
+            <div class="app-modal-actions" id="appModalActions"></div>
+        </div>
+    </div>
+
     <script>
         // ==================== NOTIFICATION SYSTEM ====================
         function showNotification(message, type = 'success', duration = 1000) {
-            // Remove existing notification if any
             const existingNotif = document.getElementById('notificationPopup');
             if (existingNotif) existingNotif.remove();
-            
-            // Create notification element
+
             const notif = document.createElement('div');
             notif.id = 'notificationPopup';
             notif.style.cssText = `
@@ -63,9 +71,10 @@
                 z-index: 10000;
                 animation: slideIn 0.3s ease-in-out;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                max-width: 320px;
+                line-height: 1.4;
             `;
-            
-            // Set color based on type
+
             const colors = {
                 'success': '#28a745',
                 'error': '#dc3545',
@@ -74,43 +83,157 @@
             };
             notif.style.backgroundColor = colors[type] || colors['success'];
             notif.textContent = message;
-            
+
             document.body.appendChild(notif);
-            
-            // Auto-remove after duration
+
             setTimeout(() => {
                 notif.style.animation = 'slideOut 0.3s ease-in-out';
                 setTimeout(() => notif.remove(), 300);
             }, duration);
         }
 
-        // Add CSS animations
-        const style = document.createElement('style');
-        style.textContent = `
+        const modalStyle = document.createElement('style');
+        modalStyle.textContent = `
             @keyframes slideIn {
-                from {
-                    transform: translateX(400px);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
             }
             @keyframes slideOut {
-                from {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: translateX(400px);
-                    opacity: 0;
-                }
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(400px); opacity: 0; }
             }
         `;
-        document.head.appendChild(style);
+        document.head.appendChild(modalStyle);
 
-        // Authentication check
+        const appModalOverlay = document.getElementById('appModalOverlay');
+        const appModalTitle = document.getElementById('appModalTitle');
+        const appModalBody = document.getElementById('appModalBody');
+        const appModalActions = document.getElementById('appModalActions');
+
+        function openAppModal() {
+            appModalOverlay.hidden = false;
+            document.body.classList.add('modal-open');
+        }
+
+        function closeAppModal() {
+            appModalOverlay.hidden = true;
+            document.body.classList.remove('modal-open');
+            appModalBody.innerHTML = '';
+            appModalActions.innerHTML = '';
+        }
+
+        function showAppModal({ title = 'Notice', body = '', actions = [] } = {}) {
+            appModalTitle.textContent = title;
+            appModalBody.innerHTML = '';
+
+            if (typeof body === 'string') {
+                appModalBody.innerHTML = body;
+            } else if (body instanceof Node) {
+                appModalBody.appendChild(body);
+            }
+
+            appModalActions.innerHTML = '';
+            actions.forEach(action => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = action.label;
+                button.className = action.className || 'btn';
+                if (action.attrs) {
+                    Object.entries(action.attrs).forEach(([key, value]) => button.setAttribute(key, value));
+                }
+                button.addEventListener('click', () => {
+                    if (typeof action.onClick === 'function') {
+                        action.onClick();
+                    }
+                });
+                appModalActions.appendChild(button);
+            });
+
+            openAppModal();
+        }
+
+        function showConfirmModal(message, title = 'Confirm Action', confirmText = 'Confirm', cancelText = 'Cancel') {
+            return new Promise(resolve => {
+                showAppModal({
+                    title,
+                    body: `<p style="margin: 0 0 1rem; line-height: 1.6;">${message}</p>`,
+                    actions: [
+                        {
+                            label: cancelText,
+                            className: 'btn btn-secondary',
+                            onClick: () => { closeAppModal(); resolve(false); }
+                        },
+                        {
+                            label: confirmText,
+                            className: 'btn',
+                            onClick: () => { closeAppModal(); resolve(true); }
+                        }
+                    ]
+                });
+            });
+        }
+
+        function showMessageModal(title, message, type = 'info', buttonText = 'OK') {
+            return new Promise(resolve => {
+                showAppModal({
+                    title,
+                    body: `<p style="margin: 0 0 1rem; line-height: 1.6;">${message}</p>`,
+                    actions: [
+                        {
+                            label: buttonText,
+                            className: 'btn',
+                            onClick: () => { closeAppModal(); resolve(); }
+                        }
+                    ]
+                });
+            });
+        }
+
+        function showFormModal({ title = 'Form', body = '', confirmText = 'Submit', cancelText = 'Cancel', onSubmit = () => true } = {}) {
+            return new Promise(resolve => {
+                showAppModal({
+                    title,
+                    body,
+                    actions: [
+                        {
+                            label: cancelText,
+                            className: 'btn btn-secondary',
+                            onClick: () => { closeAppModal(); resolve({ cancelled: true }); }
+                        },
+                        {
+                            label: confirmText,
+                            className: 'btn',
+                            onClick: () => {
+                                const result = onSubmit();
+                                if (result === false) {
+                                    return;
+                                }
+                                Promise.resolve(result).then(resolved => {
+                                    if (resolved === false) {
+                                        return;
+                                    }
+                                    closeAppModal();
+                                    resolve({ cancelled: false, result: resolved });
+                                });
+                            }
+                        }
+                    ]
+                });
+            });
+        }
+
+        appModalOverlay.addEventListener('click', function(event) {
+            if (event.target === appModalOverlay) {
+                closeAppModal();
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && !appModalOverlay.hidden) {
+                closeAppModal();
+            }
+        });
+
         async function checkAuth() {
             const response = await fetch('/api/me');
             if (response.status === 401) {
@@ -119,23 +242,22 @@
             }
             return true;
         }
-        
-        // Logout function
+
         async function logout(event) {
             if (event) {
                 event.preventDefault();
             }
-            if (confirm('Are you sure you want to logout?')) {
-                await fetch('/api/logout', { method: 'POST' });
-                showNotification('✓ Logged out successfully!', 'info', 1500);
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1500);
-            }
+            const confirmed = await showConfirmModal('Are you sure you want to logout?', 'Logout', 'Logout', 'Stay');
+            if (!confirmed) return;
+
+            await fetch('/api/logout', { method: 'POST' });
+            showNotification('✓ Logged out successfully!', 'info', 1500);
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
         }
         window.logout = logout;
-        
-        // Check for unread notifications
+
         async function checkUnreadNotifications() {
             try {
                 const response = await fetch('/api/notifications/unread');
@@ -150,15 +272,13 @@
                 console.error('Error checking unread notifications:', error);
             }
         }
-        
-        // Check notifications on page load if user is logged in
+
         document.addEventListener('DOMContentLoaded', function() {
             if (document.getElementById('notificationsTab')) {
                 checkUnreadNotifications();
             }
         });
-        
-        // API helper
+
         async function apiCall(url, options = {}) {
             const response = await fetch(url, {
                 ...options,

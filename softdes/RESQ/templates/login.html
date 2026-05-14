@@ -3,11 +3,9 @@
 {% block title %}Login - RESQ{% endblock %}
 
 {% block content %}
-<div class="auth-shell">
-    <div class="auth-card card" style="max-width: 400px; margin: 2rem auto;">
-        <span class="eyebrow">Welcome back</span>
-        <h1 style="color: #1e3c72;">🔐 Login to RESQ</h1>
-        <p class="muted">Continue coordinating reports, alerts, and response actions.</p>
+<div class="login-container">
+    <div class="card" style="max-width: 400px; margin: 2rem auto;">
+        <h2 style="text-align: center; margin-bottom: 1.5rem; color: #1e3c72;">🔐 Login to RESQ</h2>
         
         <div id="alertMessage" class="alert alert-error" style="display: none;"></div>
         
@@ -22,19 +20,18 @@
                 <input type="password" id="password" name="password" required placeholder="Enter your password">
             </div>
             
-            <button type="submit" class="btn btn-block">Login</button>
+            <button type="submit" class="btn" style="width: 100%;">Login</button>
         </form>
         
-        <p class="auth-switch">
-            Don't have an account? 
-            <a href="{{ url_for('register_page') }}" style="color: #ff6b35;">Register here</a>
+        <p style="text-align: center; margin-top: 1rem;">
+            Don't have an account? <a href="{{ url_for('register_page') }}" style="color: #ff6b35;">Register here</a>
         </p>
         
-        <div class="demo-accounts" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
-            <h4 style="color: #666; margin-bottom: 0.5rem;">Test Accounts</h4>
-            <ul style="list-style: none; font-size: 0.9rem; color: #666; padding-left: 0;">
-                <li><strong>Admin:</strong> admin / admin123</li>
-                <li><strong>Volunteer:</strong> john_volunteer / volunteer123</li>
+        <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
+            <h4 style="color: #666; margin-bottom: 0.5rem;">Test Accounts:</h4>
+            <ul style="list-style: none; font-size: 0.9rem; color: #666;">
+                <li style="margin-bottom: 0.25rem;"><strong>Admin:</strong> admin / admin123</li>
+                <li style="margin-bottom: 0.25rem;"><strong>Volunteer:</strong> john_volunteer / volunteer123</li>
                 <li><strong>Citizen:</strong> mike_citizen / citizen123</li>
             </ul>
         </div>

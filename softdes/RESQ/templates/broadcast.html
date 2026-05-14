@@ -3,32 +3,21 @@
 {% block title %}Broadcast - RESQ{% endblock %}
 
 {% block content %}
-<div class="broadcast-shell">
-    <div class="card form-card" style="max-width: 700px; margin: 0 auto;">
-        
-        <!-- Header (from 2nd UI) -->
-        <span class="eyebrow">Admin broadcast</span>
-        <h1>Broadcast Announcement</h1>
-        <p class="muted">
-            Send a clear notification to all users. This action is restricted to administrators.
-        </p>
+<div class="card" style="max-width: 700px; margin: 0 auto;">
+    <h1 style="margin-bottom: 1rem;">📢 Broadcast Announcement</h1>
+    <p style="margin-bottom: 1.5rem; color: #555;">Send a notification to all users. This action is restricted to administrators.</p>
 
-        <!-- Form -->
-        <div class="form-group">
-            <label for="broadcastTitle">Title</label>
-            <input id="broadcastTitle" type="text" placeholder="System Announcement" />
-        </div>
-
-        <div class="form-group">
-            <label for="broadcastMessage">Message</label>
-            <textarea id="broadcastMessage" rows="6" placeholder="Write your broadcast message here..."></textarea>
-        </div>
-
-        <button class="btn btn-block" onclick="sendBroadcast()">Send Broadcast</button>
-
-        <!-- Result -->
-        <div id="broadcastResult" style="margin-top: 1rem; display: none; padding: 1rem; border-radius: 8px;"></div>
+    <div class="form-group">
+        <label for="broadcastTitle">Title</label>
+        <input id="broadcastTitle" type="text" placeholder="System Announcement" />
     </div>
+    <div class="form-group">
+        <label for="broadcastMessage">Message</label>
+        <textarea id="broadcastMessage" rows="6" placeholder="Write your broadcast message here..."></textarea>
+    </div>
+    <button class="btn" onclick="sendBroadcast()">Send Broadcast</button>
+
+    <div id="broadcastResult" style="margin-top: 1rem; display: none; padding: 1rem; border-radius: 8px;"></div>
 </div>
 
 <script>
@@ -37,7 +26,6 @@ async function sendBroadcast() {
     const message = document.getElementById('broadcastMessage').value.trim();
     const resultDiv = document.getElementById('broadcastResult');
 
-    // Validation (from 1st)
     if (!message) {
         resultDiv.style.display = 'block';
         resultDiv.style.background = '#f8d7da';
@@ -46,11 +34,7 @@ async function sendBroadcast() {
         return;
     }
 
-    // Simple confirm (stable, no dependency)
-    if (!confirm('Send this broadcast to all users?')) return;
-
     try {
-        // Backend route preserved
         const response = await fetch('/api/admin/broadcast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -64,7 +48,6 @@ async function sendBroadcast() {
             resultDiv.style.background = '#d4edda';
             resultDiv.style.color = '#155724';
             resultDiv.textContent = data.message || 'Broadcast sent successfully.';
-            
             document.getElementById('broadcastMessage').value = '';
         } else {
             resultDiv.style.display = 'block';
@@ -81,5 +64,4 @@ async function sendBroadcast() {
     }
 }
 </script>
-
 {% endblock %}
