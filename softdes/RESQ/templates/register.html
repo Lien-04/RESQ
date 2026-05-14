@@ -71,6 +71,14 @@
 <script>
 // ✅ KEEP ORIGINAL LOGIC (no changes to backend behavior)
 
+// Phone number validation - only allow numbers, +, and -
+document.getElementById('phone').addEventListener('input', function(e) {
+    let value = this.value;
+    // Remove any characters that are not digits, +, or -
+    let filteredValue = value.replace(/[^0-9+\-]/g, '');
+    this.value = filteredValue;
+});
+
 // Show/hide skills field based on role selection
 document.getElementById('role').addEventListener('change', function() {
     const skillsGroup = document.getElementById('skillsGroup');
