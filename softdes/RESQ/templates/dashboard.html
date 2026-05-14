@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadUserInfo();
     await setupAdminView();
 
-    // Realtime refresh every 30 seconds
+    // Realtime refresh every 3 seconds
     setInterval(async () => {
         await loadUserInfo();
         if (currentUser && currentUser.role === 'admin') {
@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 await loadCompletedAssignments();
             }
         }
-    }, 30000);
+    }, 3000);
 });
 
 async function setupAdminView() {

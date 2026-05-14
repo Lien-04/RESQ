@@ -76,8 +76,8 @@ document.addEventListener('DOMContentLoaded', function() {
         loadSingleIncident(incidentId);
     } else {
         loadIncidents();
-        // Realtime refresh every 30 seconds for incident list
-        setInterval(() => loadIncidents(), 30000);
+        // Realtime refresh every 3 seconds for incident list
+        setInterval(() => loadIncidents(), 3000);
     }
 });
 
