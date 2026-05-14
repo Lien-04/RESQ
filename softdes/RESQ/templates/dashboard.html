@@ -157,6 +157,168 @@ async function loadUserInfo() {
     }
 }
 
+async function loadLatestIncidents() {
+    try {
+        const response = await fetch('/api/reports');
+        if (!response.ok) {
+            throw new Error('Failed to fetch incidents');
+        }
+        const data = await response.json();
+        
+        let html = '';
+        if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach(incident => {
+                html += `
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #ff6b35;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Reported: ${new Date(incident.created_at).toLocaleString()}</p>
+                    </div>
+                `;
+            });
+        } else {
+            html = '<p style="color: #666;">No incidents reported yet.</p>';
+        }
+        
+        document.getElementById('incidentsList').innerHTML = html;
+    } catch (error) {
+        console.error('Error loading incidents:', error);
+        document.getElementById('incidentsList').innerHTML = '<p style="color: #d9534f;">Failed to load incidents.</p>';
+    }
+}
+
+async function loadMyReports() {
+    try {
+        const response = await fetch('/api/reports?my_reports=true');
+        if (!response.ok) {
+            throw new Error('Failed to fetch reports');
+        }
+        const data = await response.json();
+        
+        let html = '';
+        if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach(incident => {
+                html += `
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #5cb85c;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Reported: ${new Date(incident.created_at).toLocaleString()}</p>
+                    </div>
+                `;
+            });
+        } else {
+            html = '<p style="color: #666;">You haven\'t reported any incidents yet.</p>';
+        }
+        
+        document.getElementById('myReportsList').innerHTML = html;
+    } catch (error) {
+        console.error('Error loading my reports:', error);
+        document.getElementById('myReportsList').innerHTML = '<p style="color: #d9534f;">Failed to load reports.</p>';
+    }
+}
+
+async function loadAssignedIncidents() {
+    try {
+        const response = await fetch('/api/reports?assigned_to_me=true');
+        if (!response.ok) {
+            throw new Error('Failed to fetch assigned incidents');
+        }
+        const data = await response.json();
+        
+        let html = '';
+        if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach(incident => {
+                html += `
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #0275d8;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Assigned: ${new Date(incident.created_at).toLocaleString()}</p>
+                    </div>
+                `;
+            });
+        } else {
+            html = '<p style="color: #666;">No incidents assigned to you yet.</p>';
+        }
+        
+        document.getElementById('assignedIncidentsList').innerHTML = html;
+    } catch (error) {
+        console.error('Error loading assigned incidents:', error);
+        document.getElementById('assignedIncidentsList').innerHTML = '<p style="color: #d9534f;">Failed to load assigned incidents.</p>';
+    }
+}
+
+async function loadCompletedAssignments() {
+    try {
+        const response = await fetch('/api/reports?completed_assignments=true');
+        if (!response.ok) {
+            throw new Error('Failed to fetch completed assignments');
+        }
+        const data = await response.json();
+        
+        let html = '';
+        if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach(incident => {
+                html += `
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #5cb85c;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Completed: ${new Date(incident.created_at).toLocaleString()}</p>
+                    </div>
+                `;
+            });
+        } else {
+            html = '<p style="color: #666;">You haven\'t completed any assignments yet.</p>';
+        }
+        
+        document.getElementById('completedAssignmentsList').innerHTML = html;
+    } catch (error) {
+        console.error('Error loading completed assignments:', error);
+        document.getElementById('completedAssignmentsList').innerHTML = '<p style="color: #d9534f;">Failed to load completed assignments.</p>';
+    }
+}
+
+async function loadAdminStats() {
+    try {
+        const response = await fetch('/api/reports');
+        if (!response.ok) {
+            throw new Error('Failed to fetch incidents');
+        }
+        const data = await response.json();
+        
+        let total = 0;
+        let pending = 0;
+        let inProgress = 0;
+        let resolved = 0;
+        
+        if (data.incidents) {
+            total = data.incidents.length;
+            data.incidents.forEach(incident => {
+                if (incident.status === 'pending') {
+                    pending++;
+                } else if (incident.status === 'in_progress') {
+                    inProgress++;
+                } else if (incident.status === 'resolved') {
+                    resolved++;
+                }
+            });
+        }
+        
+        document.getElementById('totalIncidentsCount').textContent = total;
+        document.getElementById('pendingCount').textContent = pending;
+        document.getElementById('inProgressCount').textContent = inProgress;
+        document.getElementById('resolvedCount').textContent = resolved;
+    } catch (error) {
+        console.error('Error loading admin stats:', error);
+    }
+}
 
 </script>
 
