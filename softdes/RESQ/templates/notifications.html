@@ -22,7 +22,7 @@
             </span>
         </div>
         <button id="markAllBtn" class="btn btn-secondary" onclick="markAllAsRead()" style="display: none;">
-            Mark All as Read
+            Mark All as Done
         </button>
     </div>
     
@@ -130,7 +130,7 @@ async function markAllAsRead() {
             document.getElementById('unreadCount').textContent = '0';
             document.getElementById('unreadCount').style.display = 'none';
             await loadNotifications();
-            showNotification('✓ All notifications marked as read!', 'success', 1500);
+            showNotification('✓ All notifications marked as done!', 'success', 1500);
         } else {
             const data = await response.json();
             showNotification(data.error || 'Failed to mark all as read', 'error', 2000);

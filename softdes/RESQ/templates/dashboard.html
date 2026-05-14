@@ -274,13 +274,18 @@ async function loadAssignedIncidents() {
                         </div>
                     `;
                 }
+
+                const assignedStatus = incident.status === 'in_progress' ? 'Waiting for Response' : incident.status.replace(/_/g, ' ');
+                const verificationText = incident.verification_status === 'verified' ? 'Verified' : 'Not Verified';
+                const verificationColor = incident.verification_status === 'verified' ? '#28a745' : '#dc3545';
                 
                 html += `
                     <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#0275d8'};">
                         <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
                         <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
-                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${assignedStatus}</span></p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Verification:</strong> <span style="color: ${verificationColor}; font-weight: bold;">${verificationText}</span></p>
                         <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Assigned: ${new Date(incident.created_at).toLocaleString()}</p>
                         ${actionButtons}
                     </div>

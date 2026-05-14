@@ -40,10 +40,10 @@
         <h3>User Management</h3>
 
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('all-users')">All Users</button>
-            <button class="tab-btn" onclick="switchTab('citizens')">Citizens</button>
-            <button class="tab-btn" onclick="switchTab('volunteers')">Volunteers</button>
-            <button class="tab-btn" onclick="switchTab('admins')">Admins</button>
+            <button class="tab-btn active" onclick="switchTab('all-users', event)">All Users</button>
+            <button class="tab-btn" onclick="switchTab('citizens', event)">Citizens</button>
+            <button class="tab-btn" onclick="switchTab('volunteers', event)">Volunteers</button>
+            <button class="tab-btn" onclick="switchTab('admins', event)">Admins</button>
         </div>
 
         <div class="card">
@@ -94,12 +94,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ---------------- TAB ----------------
-function switchTab(tabName){
+function switchTab(tabName, event){
     document.querySelectorAll('.tab-content').forEach(t => t.style.display='none');
     document.getElementById(`tab-${tabName}`).style.display='block';
 
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    event.target.classList.add('active');
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
 
     if(tabName==='citizens') loadCitizens();
     if(tabName==='volunteers') loadVolunteers();
@@ -161,19 +163,29 @@ function renderTable(users, target){
 
 // ---------------- VOLUNTEERS ----------------
 async function loadVolunteers(){
-    const res = await fetch('/api/admin/volunteers');
+    const res = await fetch('/api/admin/users?role=volunteer');
     const data = await res.json();
 
     let html="";
-    data.volunteers.forEach(v=>{
-        html+=`
-        <div class="card">
-            <b>${v.full_name}</b><br>
-            ${v.email}<br>
-            <button onclick="editVolunteerSkills(${v.id})">Add Skill</button>
-            <button onclick="deleteUser(${v.id})">Delete</button>
-        </div>`;
-    });
+    if (!data.users || data.users.length === 0) {
+        html = '<p style="color: #666;">No volunteers found.</p>';
+    } else {
+        data.users.forEach(v=>{
+            html += `
+            <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
+                <div style="display:flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                    <div>
+                        <h4 style="margin:0;">${v.full_name}</h4>
+                        <p style="margin:0.25rem 0 0; color:#666;">${v.email}</p>
+                        <p style="margin:0.25rem 0 0; color:#666;">Role: ${v.role}</p>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="deleteUser(${v.id})">Delete</button>
+                    </div>
+                </div>
+            </div>`;
+        });
+    }
 
     volunteersList.innerHTML = html;
 }
@@ -184,14 +196,32 @@ async function loadAdminIncidents(){
     const data = await res.json();
 
     let html="";
-    data.incidents.slice(0,10).forEach(i=>{
-        html+=`
-        <div class="card">
-            ${i.title} (${i.status})
-            <button onclick="assignIncident(${i.id})">Assign</button>
-            <button onclick="verifyAdminIncident(${i.id})">Verify</button>
-        </div>`;
-    });
+    if (!data.incidents || data.incidents.length === 0) {
+        html = '<p style="color: #666;">No incidents available.</p>';
+    } else {
+        data.incidents.slice(0,10).forEach(i=>{
+            const assignedName = i.assignee ? i.assignee.full_name : 'Unassigned';
+            const verificationLabel = i.verification_status === 'verified' ? 'Verified' : 'Not verified';
+            const verifyButtonLabel = i.status === 'verified' ? 'Unverify' : 'Verify';
+            const verifyActionStatus = i.status === 'verified' ? 'pending' : 'verified';
+
+            html += `
+            <div class="card" style="padding: 1rem; margin-bottom: 1rem; display: grid; gap: 0.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
+                    <div>
+                        <strong>${i.title}</strong>
+                        <p style="margin:0.25rem 0 0; color:#666;">Status: ${i.status.replace(/_/g, ' ')}</p>
+                        <p style="margin:0.25rem 0 0; color:#666;">Assigned: ${assignedName}</p>
+                        <p style="margin:0.25rem 0 0; color:#666;">Verified: ${verificationLabel}</p>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="assignIncident(${i.id})">Assign</button>
+                        <button class="btn" onclick="toggleIncidentVerification(${i.id}, '${verifyActionStatus}')">${verifyButtonLabel}</button>
+                    </div>
+                </div>
+            </div>`;
+        });
+    }
 
     adminIncidentsList.innerHTML=html;
 }
@@ -205,18 +235,7 @@ async function deleteUser(id){
 }
 
 function editVolunteerSkills(id){
-    const skill = prompt("Skill:");
-    if(!skill) return;
-    addSkillToVolunteer(id, skill, "intermediate");
-}
-
-async function addSkillToVolunteer(id, skill, level){
-    await fetch(`/api/admin/volunteers/${id}/skills`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({skill_name:skill, proficiency_level:level})
-    });
-    loadVolunteers();
+    alert('Volunteer skill editing is not available in this version.');
 }
 
 // ---------------- ASSIGN ----------------
@@ -255,10 +274,15 @@ async function submitAssignment(){
 }
 
 // ---------------- VERIFY ----------------
-async function verifyAdminIncident(id){
-    if(!confirm("Verify incident?")) return;
+async function toggleIncidentVerification(id, targetStatus){
+    const actionLabel = targetStatus === 'verified' ? 'Verify' : 'Unverify';
+    if (!confirm(`${actionLabel} incident?`)) return;
 
-    await fetch(`/api/reports/${id}/verify`,{method:'POST'});
+    await fetch(`/api/reports/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: targetStatus })
+    });
     loadAdminIncidents();
 }
 </script>
