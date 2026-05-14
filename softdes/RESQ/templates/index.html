@@ -1,91 +1,74 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RESQ - Disaster Response Coordination Platform</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% extends "base.html" %}
 
-</head>
-<body>
-    <header>
-        <div class="logo">
-            <div class="logo-icon">⚡</div>
-            RESQ
+{% block title %}RESQ - Disaster Response Coordination Platform{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-copy">
+        <span class="eyebrow">Community response, coordinated</span>
+        <h1>RESQ keeps urgent help moving.</h1>
+        <p>Report incidents, coordinate volunteers, and keep responders aligned with a calm, simple workspace built for disaster response.</p>
+        <div class="hero-buttons">
+            <a href="/register" class="btn btn-emergency">Get Started</a>
+            <a href="/login" class="btn btn-secondary">Login</a>
         </div>
-        <nav>
-            <a href="/">Home</a>
-            <a href="/login">Login</a>
-            <a href="/register" style="background: #ff6b35;">Get Started</a>
-        </nav>
-    </header>
-    
-    <div class="container">
-        <!-- Hero -->
-        <section class="hero">
-            <h1>Disaster Response Coordination Platform</h1>
-            <p>Connect citizens, volunteers, and emergency responders to coordinate disaster response quickly and efficiently.</p>
-            <div class="hero-buttons">
-                <a href="/register" class="btn">Get Started</a>
-                <a href="/login" class="btn btn-secondary">Login</a>
-            </div>
-        </section>
-        
-        <!-- Stats -->
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-number">10K+</div>
-                <div class="stat-label">Active Volunteers</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">50K+</div>
-                <div class="stat-label">Incidents Resolved</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">24/7</div>
-                <div class="stat-label">Active Monitoring</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number"><5min</div>
-                <div class="stat-label">Response Time</div>
-            </div>
-        </div>
-        
-        <!-- Features -->
-        <div class="features">
-            <div class="feature-card">
-                <div class="feature-icon">📱</div>
-                <h3>Easy Reporting</h3>
-                <p>Citizens can quickly report incidents with location, type, and description through a simple interface.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🚒</div>
-                <h3>Volunteer Matching</h3>
-                <p>Skill-based matching connects the right volunteers to the right incidents based on location and expertise.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔔</div>
-                <h3>Real-time Alerts</h3>
-                <p>Instant notifications keep everyone informed about new incidents, assignments, and status changes.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📊</div>
-                <h3>Admin Dashboard</h3>
-                <p>Comprehensive analytics and management tools for coordinators to oversee entire operations.</p>
-            </div>
-        </div>
-        
-        <!-- CTA -->
-        <section class="cta">
-            <h2>Ready to Make a Difference?</h2>
-            <p>Join our network of volunteers and help respond to disasters in your community.</p>
-            <a href="/register" class="btn" style="background: white; color: #1e3c72;">Register Now</a>
-        </section>
     </div>
-    
-    <footer>
-        <p>&copy; 2024 RESQ - Disaster Response Coordination Platform</p>
-        <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.7;">Built with Flask | Student Project</p>
-    </footer>
-</body>
-</html>
+    <div class="hero-panel" aria-label="RESQ response preview">
+        <div class="phone-frame">
+            <div class="phone-status">
+                <span>Live Reports</span>
+                <strong>24/7</strong>
+            </div>
+            <div class="mini-alert critical">
+                <span class="mini-icon">!</span>
+                <div>
+                    <strong>Flood reported</strong>
+                    <small>Barangay 12 - high priority</small>
+                </div>
+            </div>
+            <div class="mini-alert">
+                <span class="mini-icon">+</span>
+                <div>
+                    <strong>Volunteer assigned</strong>
+                    <small>Medical team en route</small>
+                </div>
+            </div>
+            <div class="mini-progress">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="features">
+    <div class="feature-card">
+        <div class="feature-icon">01</div>
+        <h3>Easy Reporting</h3>
+        <p>Citizens can quickly report incidents with location, type, and priority through a guided form.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">02</div>
+        <h3>Volunteer Matching</h3>
+        <p>Coordinators can assign the right volunteers to incidents based on urgency and field needs.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">03</div>
+        <h3>Real-time Alerts</h3>
+        <p>Notifications keep citizens, volunteers, and admins aware of assignments and status changes.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">04</div>
+        <h3>Admin Dashboard</h3>
+        <p>Simple management views help admins oversee reports, users, broadcasts, and response flow.</p>
+    </div>
+</div>
+
+<section class="cta">
+    <span class="eyebrow">Start with one report</span>
+    <h2>Ready to help your community respond faster?</h2>
+    <p>Create an account as a citizen or volunteer and move from uncertainty to action.</p>
+    <a href="/register" class="btn btn-light">Register Now</a>
+</section>
+{% endblock %}

@@ -3,9 +3,11 @@
 {% block title %}Register - RESQ{% endblock %}
 
 {% block content %}
-<div class="register-container">
-    <div class="card" style="max-width: 500px; margin: 2rem auto;">
-        <h2 style="text-align: center; margin-bottom: 1.5rem; color: #1e3c72;">📝 Register with RESQ</h2>
+<div class="auth-shell">
+    <div class="auth-card auth-card-wide card" style="max-width: 500px; margin: 2rem auto;">
+        <span class="eyebrow">Join RESQ</span>
+        <h1 style="color: #1e3c72;">📝 Create your account</h1>
+        <p class="muted">Choose how you want to help: report incidents as a citizen or respond as a volunteer.</p>
         
         <div id="alertMessage" class="alert alert-error" style="display: none;"></div>
         
@@ -51,20 +53,24 @@
             
             <div class="form-group" id="skillsGroup" style="display: none;">
                 <label for="skills">Skills (for Volunteers)</label>
-                <textarea id="skills" name="skills" placeholder="Enter your skills (e.g., First Aid, CPR, Search & Rescue, Medical Training, Communication, Leadership)" rows="3"></textarea>
+                <textarea id="skills" name="skills" rows="3"
+                    placeholder="Enter your skills (e.g., First Aid, CPR, Search & Rescue, Medical Training, Communication, Leadership)"></textarea>
                 <small style="color: #666;">Separate multiple skills with commas</small>
             </div>
             
-            <button type="submit" class="btn" style="width: 100%;">Register</button>
+            <button type="submit" class="btn btn-block">Register</button>
         </form>
         
-        <p style="text-align: center; margin-top: 1rem;">
-            Already have an account? <a href="{{ url_for('login_page') }}" style="color: #ff6b35;">Login here</a>
+        <p class="auth-switch">
+            Already have an account? 
+            <a href="{{ url_for('login_page') }}" style="color: #ff6b35;">Login here</a>
         </p>
     </div>
 </div>
 
 <script>
+// ✅ KEEP ORIGINAL LOGIC (no changes to backend behavior)
+
 // Show/hide skills field based on role selection
 document.getElementById('role').addEventListener('change', function() {
     const skillsGroup = document.getElementById('skillsGroup');
