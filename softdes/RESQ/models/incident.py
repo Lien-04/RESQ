@@ -128,7 +128,10 @@ class Incident(db.Model):
 
     @staticmethod
     def get_assigned_to(volunteer_id):
-        return Incident.query.filter_by(assigned_volunteer_id=volunteer_id).order_by(Incident.created_at.desc()).all()
+        return Incident.query.filter(
+            Incident.assigned_volunteer_id == volunteer_id,
+            Incident.status != IncidentStatus.RESOLVED
+        ).order_by(Incident.created_at.desc()).all()
 
     @staticmethod
     def get_completed_assignments(volunteer_id):
@@ -163,14 +166,16 @@ class Incident(db.Model):
         self.updated_at = datetime.utcnow()
         if new_status == IncidentStatus.RESOLVED:
             self.resolved_at = datetime.utcnow()
-        if updated_by is not None:
+        if new_status == IncidentStatus.VERIFIED:
             self.verified_by = updated_by
+        elif new_status == IncidentStatus.PENDING:
+            self.verified_by = None
         db.session.commit()
         return self
 
     def assign_to(self, volunteer_id):
         self.assigned_volunteer_id = volunteer_id
-        if self.status in [IncidentStatus.PENDING, IncidentStatus.VERIFIED]:
+        if self.status == IncidentStatus.VERIFIED:
             self.status = IncidentStatus.IN_PROGRESS
         self.updated_at = datetime.utcnow()
         db.session.commit()
