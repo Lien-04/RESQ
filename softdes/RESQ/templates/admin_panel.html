@@ -67,8 +67,21 @@
 
     <!-- INCIDENTS -->
     <div class="card">
-        <h3>Assign Incidents</h3>
-        <div id="adminIncidentsList"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+            <h3 style="margin:0;">Assign Incidents</h3>
+            <div>
+                <button class="tab-btn active" onclick="switchIncidentTab('active', event)">Active Incidents</button>
+                <button class="tab-btn" onclick="switchIncidentTab('completed', event)">Completed Reports</button>
+            </div>
+        </div>
+        <div id="incidentsTabActive" style="display:block;">
+            <div id="adminIncidentsList"></div>
+            <div id="adminIncidentsFooter" style="text-align: right; margin-top: 1rem;"></div>
+        </div>
+        <div id="incidentsTabCompleted" style="display:none;">
+            <div id="completedIncidentsList"></div>
+            <div id="completedIncidentsFooter" style="text-align: right; margin-top: 1rem;"></div>
+        </div>
     </div>
 </div>
 
@@ -191,47 +204,93 @@ async function loadVolunteers(){
 }
 
 // ---------------- INCIDENTS ----------------
+let currentIncidentTab = 'active';
+
 async function loadAdminIncidents(){
-    const res = await fetch('/api/admin/incidents');
+    const res = await fetch('/api/admin/incidents?exclude_status=resolved&limit=6');
     const data = await res.json();
+    renderAdminIncidentList(data.incidents, false, '/reports');
+}
 
-    let html="";
-    if (!data.incidents || data.incidents.length === 0) {
-        html = '<p style="color: #666;">No incidents available.</p>';
-    } else {
-        data.incidents.slice(0,10).forEach(i=>{
-            const assignedName = i.assignee ? i.assignee.full_name : 'Unassigned';
-            const verificationLabel = i.verification_status === 'verified' ? 'Verified' : 'Not verified';
-            const verifyButtonLabel = i.status === 'verified' ? 'Unverify' : 'Verify';
-            const verifyActionStatus = i.status === 'verified' ? 'pending' : 'verified';
+async function loadCompletedIncidents(){
+    const res = await fetch('/api/admin/incidents?status=resolved&limit=6');
+    const data = await res.json();
+    renderAdminIncidentList(data.incidents, true, '/reports?status=resolved');
+}
 
-            html += `
-            <div class="card" style="padding: 1rem; margin-bottom: 1rem; display: grid; gap: 0.5rem;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem;">
-                    <div>
-                        <strong>${i.title}</strong>
-                        <p style="margin:0.25rem 0 0; color:#666;">Status: ${i.status.replace(/_/g, ' ')}</p>
-                        <p style="margin:0.25rem 0 0; color:#666;">Assigned: ${assignedName}</p>
-                        <p style="margin:0.25rem 0 0; color:#666;">Verified: ${verificationLabel}</p>
-                    </div>
-                    <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" onclick="assignIncident(${i.id})">Assign</button>
-                        <button class="btn" onclick="toggleIncidentVerification(${i.id}, '${verifyActionStatus}')">${verifyButtonLabel}</button>
-                    </div>
-                </div>
-            </div>`;
-        });
+function switchIncidentTab(tabName, event){
+    currentIncidentTab = tabName;
+    document.getElementById('incidentsTabActive').style.display = tabName === 'active' ? 'block' : 'none';
+    document.getElementById('incidentsTabCompleted').style.display = tabName === 'completed' ? 'block' : 'none';
+
+    document.querySelectorAll('.card .tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
     }
 
-    adminIncidentsList.innerHTML=html;
+    if (tabName === 'active') {
+        loadAdminIncidents();
+    } else {
+        loadCompletedIncidents();
+    }
+}
+
+function renderAdminIncidentList(incidents, completed, showMoreHref){
+    const target = completed ? 'completedIncidentsList' : 'adminIncidentsList';
+    const footer = completed ? 'completedIncidentsFooter' : 'adminIncidentsFooter';
+    const listDiv = document.getElementById(target);
+    const footerDiv = document.getElementById(footer);
+    
+    if (!incidents || incidents.length === 0) {
+        listDiv.innerHTML = '<p style="color: #666;">No incidents available.</p>';
+        footerDiv.innerHTML = '';
+        return;
+    }
+
+    const hasMore = incidents.length > 5;
+    const visibleIncidents = hasMore ? incidents.slice(0, 5) : incidents;
+    let html = '';
+
+    visibleIncidents.forEach(i => {
+        const assignedName = i.assignee ? i.assignee.full_name : 'Unassigned';
+        const verificationLabel = i.verification_status === 'verified' ? 'Verified' : 'Not verified';
+        const verifyButtonLabel = i.status === 'verified' ? 'Unverify' : 'Verify';
+        const verifyActionStatus = i.status === 'verified' ? 'pending' : 'verified';
+
+        html += `
+        <div class="card" style="padding: 1rem; margin-bottom: 1rem; display: grid; gap: 0.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+                <div>
+                    <strong>${i.title}</strong>
+                    <p style="margin:0.25rem 0 0; color:#666;">Status: ${i.status.replace(/_/g, ' ')}</p>
+                    <p style="margin:0.25rem 0 0; color:#666;">Assigned: ${assignedName}</p>
+                    <p style="margin:0.25rem 0 0; color:#666;">Verified: ${verificationLabel}</p>
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+                    ${!completed ? `<button class="btn btn-secondary" onclick="assignIncident(${i.id})">Assign</button>` : ''}
+                    <button class="btn" onclick="toggleIncidentVerification(${i.id}, '${verifyActionStatus}')">${verifyButtonLabel}</button>
+                </div>
+            </div>
+        </div>`;
+    });
+
+    listDiv.innerHTML = html;
+    footerDiv.innerHTML = hasMore ? `<button class="btn btn-secondary" onclick="window.location.href='${showMoreHref}'">Show more</button>` : '';
 }
 
 // ---------------- ACTIONS ----------------
 async function deleteUser(id){
-    if(!confirm("Delete user?")) return;
-
-    await fetch(`/api/admin/users/${id}`,{method:'DELETE'});
-    loadUsers(); loadStatistics();
+    showModal(
+        'Delete User',
+        'Are you sure you want to delete this user? This action cannot be undone.',
+        'warning',
+        'Delete',
+        async () => {
+            await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+            loadUsers();
+            loadStatistics();
+        }
+    );
 }
 
 function editVolunteerSkills(id){
@@ -259,31 +318,62 @@ function closeAssignmentModal(){
     assignmentModal.style.display='none';
 }
 
-async function submitAssignment(){
+function submitAssignment(){
     const v = assignmentVolunteer.value;
-    if(!v) return alert("Select volunteer");
+    if(!v) {
+        showNotification('Please select a volunteer before assigning.', 'warning', 2000);
+        return;
+    }
 
-    await fetch(`/api/reports/${window.currentAssignmentIncidentId}/assign`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({volunteer_id:parseInt(v)})
-    });
+    showModal(
+        'Assign Incident',
+        'Assign this incident to the selected volunteer?',
+        'question',
+        'Assign',
+        async () => {
+            const response = await fetch(`/api/reports/${window.currentAssignmentIncidentId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ volunteer_id: parseInt(v) })
+            });
 
-    closeAssignmentModal();
-    loadAdminIncidents();
+            if (response.ok) {
+                showNotification('Incident assigned successfully.', 'success', 1500);
+                closeAssignmentModal();
+                loadAdminIncidents();
+            } else {
+                const data = await response.json().catch(() => null);
+                showNotification(data?.error || 'Assignment failed.', 'error', 2000);
+            }
+        }
+    );
 }
 
 // ---------------- VERIFY ----------------
 async function toggleIncidentVerification(id, targetStatus){
     const actionLabel = targetStatus === 'verified' ? 'Verify' : 'Unverify';
-    if (!confirm(`${actionLabel} incident?`)) return;
 
-    await fetch(`/api/reports/${id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: targetStatus })
-    });
-    loadAdminIncidents();
+    showModal(
+        `${actionLabel} Incident`,
+        `Are you sure you want to ${actionLabel.toLowerCase()} this incident?`,
+        'question',
+        actionLabel,
+        async () => {
+            const response = await fetch(`/api/reports/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: targetStatus })
+            });
+
+            if (response.ok) {
+                showNotification(`Incident ${actionLabel.toLowerCase()}ed successfully.`, 'success', 1500);
+                loadAdminIncidents();
+            } else {
+                const data = await response.json().catch(() => null);
+                showNotification(data?.error || 'Failed to update status.', 'error', 2000);
+            }
+        }
+    );
 }
 </script>
 

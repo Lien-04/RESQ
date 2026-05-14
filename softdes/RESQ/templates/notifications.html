@@ -116,29 +116,34 @@ async function loadNotifications() {
 }
 
 async function markAllAsRead() {
-    // ✅ KEEP ORIGINAL BACKEND BEHAVIOR (confirm instead of modal)
-    if (!confirm('Mark ALL notifications as read?')) return;
-    
-    try {
-        const response = await fetch('/api/notifications/mark-all-read', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (response.ok) {
-            document.getElementById('markAllBtn').style.display = 'none';
-            document.getElementById('unreadCount').textContent = '0';
-            document.getElementById('unreadCount').style.display = 'none';
-            await loadNotifications();
-            showNotification('✓ All notifications marked as done!', 'success', 1500);
-        } else {
-            const data = await response.json();
-            showNotification(data.error || 'Failed to mark all as read', 'error', 2000);
+    showModal(
+        'Mark All as Done',
+        'Mark all notifications as read? This will clear your unread notification count.',
+        'question',
+        'Yes, mark all',
+        async () => {
+            try {
+                const response = await fetch('/api/notifications/mark-all-read', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    document.getElementById('markAllBtn').style.display = 'none';
+                    document.getElementById('unreadCount').textContent = '0';
+                    document.getElementById('unreadCount').style.display = 'none';
+                    await loadNotifications();
+                    showNotification('✓ All notifications marked as done!', 'success', 1500);
+                } else {
+                    const data = await response.json().catch(() => null);
+                    showNotification(data?.error || 'Failed to mark all as read', 'error', 2000);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification('Error marking all as read', 'error', 2000);
+            }
         }
-    } catch (error) {
-        console.error('Error:', error);
-        showNotification('Error marking all as read', 'error', 2000);
-    }
+    );
 }
 
 async function markAsRead(notificationId) {
