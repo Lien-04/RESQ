@@ -160,10 +160,67 @@ class Notification(db.Model):
 
     @staticmethod
     def notify_incident_verified(user_id, incident_id, title):
-        return Notification.create_notification(
+        notification = Notification.create_notification(
             user_id=user_id,
             incident_id=incident_id,
             title='Incident Verified',
             message=f'Your incident "{title}" has been verified by an administrator.',
             notification_type=NotificationType.INCIDENT_VERIFIED
         )
+        # Send push notification
+        Notification.send_push_for_notification(notification)
+        return notification
+
+    @staticmethod
+    def send_push_for_notification(notification):
+        """
+        Send push notification for a stored notification
+        This should be called after creating a database notification
+        """
+        try:
+            from ..routes.push import webpush, WebPushException
+            from ..models.push_subscription import PushSubscription
+            import json
+            from flask import current_app
+            from datetime import datetime
+            
+            # Get user's push subscriptions
+            subscriptions = PushSubscription.get_by_user(notification.user_id)
+            
+            if not subscriptions:
+                return  # No subscriptions, skip push
+            
+            # Prepare push payload
+            push_payload = {
+                'title': notification.title,
+                'message': notification.message,
+                'notification_type': notification.notification_type,
+                'incident_id': notification.incident_id,
+                'timestamp': datetime.utcnow().isoformat()
+            }
+            
+            # Send to each subscription
+            for subscription in subscriptions:
+                try:
+                    webpush(
+                        subscription_info={
+                            'endpoint': subscription.endpoint,
+                            'keys': {
+                                'auth': subscription.auth,
+                                'p256dh': subscription.p256dh
+                            }
+                        },
+                        data=json.dumps(push_payload),
+                        vapid_private_key=current_app.config['VAPID_PRIVATE_KEY'],
+                        vapid_claims={
+                            'sub': current_app.config['VAPID_SUBJECT']
+                        }
+                    )
+                    subscription.update_last_used()
+                except Exception as e:
+                    # Log but don't fail - push is optional
+                    print(f'Push notification error: {str(e)}')
+        
+        except Exception as e:
+            # Silently fail - push notifications are optional feature
+            print(f'Failed to send push notification: {str(e)}')
