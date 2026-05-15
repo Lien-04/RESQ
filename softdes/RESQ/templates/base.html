@@ -23,6 +23,7 @@
                     <a href="{{ url_for('broadcast_page') }}">Broadcast</a>
                 {% endif %}
                 <a href="{{ url_for('notifications_page') }}" id="notificationsTab">Notifications</a>
+                <a href="#" id="pushNotifToggle" onclick="togglePushNotifications(event); return false;" style="cursor: pointer; font-size: 18px;" title="Toggle Push Notifications">🔔</a>
                 {% if session.role == 'admin' %}
                     <a href="{{ url_for('admin_page') }}">Admin</a>
                 {% endif %}
@@ -62,6 +63,251 @@
     </div>
     
     <script>
+        // ==================== SERVICE WORKER REGISTRATION ====================
+        // Register service worker for push notifications
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+                .then(registration => {
+                    console.log('[App] Service Worker registered successfully:', registration);
+                    // Initialize push notifications
+                    initPushNotifications();
+                })
+                .catch(error => {
+                    console.error('[App] Service Worker registration failed:', error);
+                });
+        } else {
+            console.warn('[App] Service Worker not supported in this browser');
+        }
+
+        // ==================== WEB PUSH NOTIFICATION SETUP ====================
+        
+        // Push notification state
+        let pushNotificationEnabled = false;
+        let vapidPublicKey = null;
+        let serviceWorkerRegistration = null;
+
+        // Initialize push notifications after service worker is ready
+        async function initPushNotifications() {
+            try {
+                // Get service worker registration
+                serviceWorkerRegistration = await navigator.serviceWorker.ready;
+                
+                // Check browser support
+                if (!('PushManager' in window)) {
+                    console.warn('[App] Push Manager not supported');
+                    return;
+                }
+                
+                // Fetch VAPID public key
+                const vapidResponse = await fetch('/api/push/vapid-public-key');
+                if (!vapidResponse.ok) {
+                    console.error('[App] Failed to fetch VAPID key');
+                    return;
+                }
+                
+                const vapidData = await vapidResponse.json();
+                vapidPublicKey = vapidData.vapid_public_key;
+                
+                console.log('[App] Push notifications initialized');
+                
+                // Check existing subscription
+                checkPushSubscription();
+                
+            } catch (error) {
+                console.error('[App] Error initializing push notifications:', error);
+            }
+        }
+
+        // Check if user is already subscribed
+        async function checkPushSubscription() {
+            try {
+                if (!serviceWorkerRegistration) {
+                    console.warn('[App] Service worker not ready yet');
+                    return;
+                }
+                
+                const subscription = await serviceWorkerRegistration.pushManager.getSubscription();
+                pushNotificationEnabled = subscription != null;
+                
+                if (pushNotificationEnabled) {
+                    console.log('[App] User is subscribed to push notifications');
+                } else {
+                    console.log('[App] User is not subscribed to push notifications');
+                }
+            } catch (error) {
+                console.error('[App] Error checking push subscription:', error);
+            }
+        }
+
+        // Request permission and subscribe to push notifications
+        async function enablePushNotifications() {
+            try {
+                // Request notification permission
+                const permission = await Notification.requestPermission();
+                
+                if (permission !== 'granted') {
+                    console.log('[App] Push notification permission denied');
+                    showNotification('Notifications disabled', 'warning');
+                    return false;
+                }
+                
+                if (!serviceWorkerRegistration) {
+                    console.error('[App] Service worker not ready');
+                    return false;
+                }
+                
+                // Subscribe to push
+                const subscription = await serviceWorkerRegistration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                });
+                
+                // Send subscription to backend
+                const response = await fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        subscription: subscription,
+                        device_name: getDeviceName()
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.error('[App] Failed to register subscription with backend');
+                    return false;
+                }
+                
+                pushNotificationEnabled = true;
+                console.log('[App] User subscribed to push notifications');
+                showNotification('✓ Push notifications enabled', 'success');
+                return true;
+                
+            } catch (error) {
+                console.error('[App] Error enabling push notifications:', error);
+                showNotification('✕ Failed to enable notifications', 'error');
+                return false;
+            }
+        }
+
+        // Unsubscribe from push notifications
+        async function disablePushNotifications() {
+            try {
+                if (!serviceWorkerRegistration) {
+                    console.error('[App] Service worker not ready');
+                    return false;
+                }
+                
+                const subscription = await serviceWorkerRegistration.pushManager.getSubscription();
+                
+                if (!subscription) {
+                    console.warn('[App] No active subscription to remove');
+                    return true;
+                }
+                
+                // Notify backend
+                const response = await fetch('/api/push/unsubscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        endpoint: subscription.endpoint
+                    })
+                });
+                
+                if (!response.ok) {
+                    console.error('[App] Failed to unregister subscription with backend');
+                }
+                
+                // Unsubscribe locally
+                await subscription.unsubscribe();
+                
+                pushNotificationEnabled = false;
+                console.log('[App] User unsubscribed from push notifications');
+                showNotification('✓ Push notifications disabled', 'success');
+                return true;
+                
+            } catch (error) {
+                console.error('[App] Error disabling push notifications:', error);
+                showNotification('✕ Failed to disable notifications', 'error');
+                return false;
+            }
+        }
+
+        // Get device name from user agent
+        function getDeviceName() {
+            const ua = navigator.userAgent;
+            if (ua.indexOf('Chrome') > -1) {
+                const match = ua.match(/Chrome\/(\d+)/);
+                return 'Chrome ' + (match ? match[1] : 'Unknown');
+            } else if (ua.indexOf('Safari') > -1) {
+                return 'Safari';
+            } else if (ua.indexOf('Firefox') > -1) {
+                const match = ua.match(/Firefox\/(\d+)/);
+                return 'Firefox ' + (match ? match[1] : 'Unknown');
+            } else if (ua.indexOf('Edge') > -1) {
+                return 'Edge';
+            } else {
+                return 'Unknown Browser';
+            }
+        }
+
+        // Convert VAPID key from base64 to Uint8Array
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding)
+                .replace(/\-/g, '+')
+                .replace(/_/g, '/');
+
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        // Expose push notification functions globally
+        window.enablePushNotifications = enablePushNotifications;
+        window.disablePushNotifications = disablePushNotifications;
+        window.checkPushSubscription = checkPushSubscription;
+
+        // Toggle push notifications on/off
+        async function togglePushNotifications(event) {
+            event.preventDefault();
+            
+            if (pushNotificationEnabled) {
+                await disablePushNotifications();
+            } else {
+                await enablePushNotifications();
+            }
+            
+            // Update UI
+            updatePushNotificationUI();
+        }
+
+        // Update UI to reflect push notification status
+        function updatePushNotificationUI() {
+            const toggle = document.getElementById('pushNotifToggle');
+            if (!toggle) return;
+            
+            if (pushNotificationEnabled) {
+                toggle.style.color = '#28a745';
+                toggle.title = 'Push Notifications: Enabled (click to disable)';
+            } else {
+                toggle.style.color = '#999';
+                toggle.title = 'Push Notifications: Disabled (click to enable)';
+            }
+        }
+
+        // Update UI on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(updatePushNotificationUI, 1000);
+        });
+
         // ==================== MODERN MODAL SYSTEM ====================
         let modalCallback = null;
         
