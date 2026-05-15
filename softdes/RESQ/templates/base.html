@@ -91,28 +91,28 @@
             try {
                 // Get service worker registration
                 serviceWorkerRegistration = await navigator.serviceWorker.ready;
-                
+
                 // Check browser support
                 if (!('PushManager' in window)) {
                     console.warn('[App] Push Manager not supported');
                     return;
                 }
-                
+
                 // Fetch VAPID public key
                 const vapidResponse = await fetch('/api/push/vapid-public-key');
                 if (!vapidResponse.ok) {
                     console.error('[App] Failed to fetch VAPID key');
                     return;
                 }
-                
+
                 const vapidData = await vapidResponse.json();
                 vapidPublicKey = vapidData.vapid_public_key;
-                
+
                 console.log('[App] Push notifications initialized');
-                
+
                 // Check existing subscription
-                checkPushSubscription();
-                
+                await checkPushSubscription();
+                updatePushNotificationUI();
             } catch (error) {
                 console.error('[App] Error initializing push notifications:', error);
             }
@@ -144,18 +144,28 @@
             try {
                 // Request notification permission
                 const permission = await Notification.requestPermission();
-                
+
                 if (permission !== 'granted') {
                     console.log('[App] Push notification permission denied');
                     showNotification('Notifications disabled', 'warning');
                     return false;
                 }
-                
+
                 if (!serviceWorkerRegistration) {
                     console.error('[App] Service worker not ready');
                     return false;
                 }
-                
+
+                if (!vapidPublicKey) {
+                    // Try refetching in case initPushNotifications hasn't completed yet
+                    const vapidResponse = await fetch('/api/push/vapid-public-key');
+                    if (!vapidResponse.ok) {
+                        throw new Error('Failed to fetch VAPID key');
+                    }
+                    const vapidData = await vapidResponse.json();
+                    vapidPublicKey = vapidData.vapid_public_key;
+                }
+
                 // Subscribe to push
                 const subscription = await serviceWorkerRegistration.pushManager.subscribe({
                     userVisibleOnly: true,
@@ -284,10 +294,16 @@
             try {
                 console.log('[App] Bell clicked. Current enabled:', pushNotificationEnabled);
 
+                // IMPORTANT: sync state from service worker before toggling
+                await checkPushSubscription();
+                updatePushNotificationUI();
+
                 if (pushNotificationEnabled) {
-                    await disablePushNotifications();
+                    const ok = await disablePushNotifications();
+                    console.log('[App] disablePushNotifications result:', ok);
                 } else {
-                    await enablePushNotifications();
+                    const ok = await enablePushNotifications();
+                    console.log('[App] enablePushNotifications result:', ok);
                 }
 
                 // Refresh enabled state from SW
