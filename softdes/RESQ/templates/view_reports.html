@@ -303,14 +303,29 @@ function viewIncident(id) {
     window.location.href = `/reports?id=${id}`;
 }
 
-async function verifyIncident(id) {
-    const confirmed = window.confirm('Verify this incident so volunteers and coordinators can act on it?');
-    if (!confirmed) return;
-    
+function verifyIncident(id) {
+    if (typeof showModal !== 'function') {
+        const confirmed = window.confirm('Verify this incident so volunteers and coordinators can act on it?');
+        if (!confirmed) return;
+        return submitVerifyIncident(id);
+    }
+
+    showModal(
+        'Verify Incident',
+        'Verify this incident so volunteers and coordinators can act on it?',
+        'question',
+        'Verify',
+        async () => {
+            await submitVerifyIncident(id);
+        }
+    );
+}
+
+async function submitVerifyIncident(id) {
     try {
         const response = await fetch(`/api/reports/${id}/verify`, { method: 'POST' });
         const data = await response.json();
-        
+
         if (response.ok) {
             showNotification('Incident verified successfully!', 'success', 2000);
             const params = new URLSearchParams(window.location.search);
