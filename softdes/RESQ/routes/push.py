@@ -2,8 +2,13 @@
 Push Notification Routes - Handle Web Push subscriptions and notifications
 """
 from flask import Blueprint, request, jsonify, session, current_app
-from pywebpush import webpush, WebPushException
 import json
+
+try:
+    from pywebpush import webpush, WebPushException
+except ImportError:
+    webpush = None
+    WebPushException = None
 
 from ..models.user import User
 from ..models.notification import Notification, NotificationType
@@ -207,6 +212,9 @@ def send_push_notification():
         failed_count = 0
         
         # Send to each subscription
+        if webpush is None:
+            return jsonify({'error': 'Push notification service unavailable: pywebpush is not installed'}), 503
+
         for subscription in subscriptions:
             try:
                 webpush(
@@ -228,12 +236,12 @@ def send_push_notification():
             
             except WebPushException as e:
                 # Handle push failures (e.g., expired subscriptions)
-                if e.response.status_code == 410:
+                if hasattr(e, 'response') and getattr(e.response, 'status_code', None) == 410:
                     # Gone - subscription is no longer valid
                     subscription.deactivate()
                 failed_count += 1
             
-            except Exception as e:
+            except Exception:
                 failed_count += 1
         
         return jsonify({
