@@ -7,7 +7,7 @@ try:
     from flask_cors import CORS
 except ImportError:
     CORS = None
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, Index
 import os
 
 from .config import config
@@ -53,6 +53,17 @@ def create_app(config_name='development'):
             if 'verified_by' not in incident_columns:
                 with db.engine.begin() as conn:
                     conn.execute(text('ALTER TABLE incidents ADD COLUMN verified_by INTEGER'))
+
+        if inspector.has_table('push_subscriptions'):
+            push_columns = [column['name'] for column in inspector.get_columns('push_subscriptions')]
+            if 'endpoint_hash' not in push_columns:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE push_subscriptions ADD COLUMN endpoint_hash VARCHAR(64)'))
+                from .models.push_subscription import PushSubscription
+                Index('ix_push_subscriptions_endpoint_hash', PushSubscription.endpoint_hash, unique=True).create(bind=db.engine, checkfirst=True)
+                for sub in PushSubscription.query.filter(PushSubscription.endpoint_hash == None).all():
+                    sub.endpoint_hash = PushSubscription.compute_endpoint_hash(sub.endpoint)
+                db.session.commit()
 
         # Initialize sample data if database is empty
         if User.query.count() == 0:
