@@ -90,6 +90,11 @@ class Notification(db.Model):
         )
         db.session.add(notification)
         db.session.commit()
+        try:
+            Notification.send_push_for_notification(notification)
+        except Exception:
+            # Push delivery is optional; do not fail notification creation.
+            pass
         return notification
 
     @staticmethod
@@ -160,16 +165,13 @@ class Notification(db.Model):
 
     @staticmethod
     def notify_incident_verified(user_id, incident_id, title):
-        notification = Notification.create_notification(
+        return Notification.create_notification(
             user_id=user_id,
             incident_id=incident_id,
             title='Incident Verified',
             message=f'Your incident "{title}" has been verified by an administrator.',
             notification_type=NotificationType.INCIDENT_VERIFIED
         )
-        # Send push notification
-        Notification.send_push_for_notification(notification)
-        return notification
 
     @staticmethod
     def send_push_for_notification(notification):
@@ -199,6 +201,9 @@ class Notification(db.Model):
                 'timestamp': datetime.utcnow().isoformat()
             }
             
+            if webpush is None:
+                return
+
             # Send to each subscription
             for subscription in subscriptions:
                 try:
