@@ -3,7 +3,10 @@ RESQ - Disaster Response Coordination Platform
 Main Flask Application
 """
 from flask import Flask, request, jsonify, session, render_template
-from flask_cors import CORS
+try:
+    from flask_cors import CORS
+except ImportError:
+    CORS = None
 from sqlalchemy import inspect, text
 import os
 
@@ -30,8 +33,11 @@ def create_app(config_name='development'):
     # Load configuration
     app.config.from_object(config.get(config_name, config['development']))
     
-    # Enable CORS for API endpoints
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # Enable CORS for API endpoints if available
+    if CORS is not None:
+        CORS(app, resources={r"/api/*": {"origins": "*"}})
+    else:
+        app.logger.warning('Flask-CORS not installed; CORS support disabled.')
     
     # Initialize database
     db.init_app(app)
