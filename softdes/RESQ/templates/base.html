@@ -451,7 +451,24 @@
                 align-items: flex-start;
                 border-left: 4px solid;
                 min-width: 300px;
+                cursor: pointer;
+                transition: all 0.2s ease;
             `;
+
+            // Make toast clickable - redirect to notifications page
+            toast.onclick = function() {
+                window.location.href = '/notifications';
+            };
+
+            // Hover effects
+            toast.onmouseover = function() {
+                toast.style.transform = 'translateY(-2px)';
+                toast.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.2)';
+            };
+            toast.onmouseout = function() {
+                toast.style.transform = 'translateY(0)';
+                toast.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
+            };
 
             // Color scheme based on type
             const colors = {
@@ -516,11 +533,15 @@
                 align-items: center;
                 justify-content: center;
                 transition: color 0.2s;
+                z-index: 10;
             `;
             closeBtn.textContent = '×';
             closeBtn.onmouseover = () => closeBtn.style.color = '#333';
             closeBtn.onmouseout = () => closeBtn.style.color = '#999';
-            closeBtn.onclick = () => removeToast();
+            closeBtn.onclick = (e) => {
+                e.stopPropagation(); // Prevent toast click when closing
+                removeToast();
+            };
 
             toast.appendChild(iconEl);
             toast.appendChild(textContainer);
@@ -551,37 +572,128 @@
         // ==================== NOTIFICATION SOUND ====================
         function playNotificationSound(type = 'info') {
             try {
-                // Create audio context
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
+                // Create audio context (fallback for older browsers)
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) {
+                    // Fallback: try to play a simple beep using data URL
+                    playFallbackSound(type);
+                    return;
+                }
+
+                const audioContext = new AudioContext();
+
+                // Resume audio context if suspended (required by modern browsers)
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume().then(() => {
+                        generateTone(audioContext, type);
+                    });
+                } else {
+                    generateTone(audioContext, type);
+                }
+            } catch (error) {
+                console.log('Web Audio API not available, using fallback:', error);
+                playFallbackSound(type);
+            }
+        }
+
+        function generateTone(audioContext, type) {
+            try {
                 // Define sound frequencies for different notification types
                 const sounds = {
-                    'success': { frequency: 800, duration: 0.3 },
-                    'error': { frequency: 300, duration: 0.5 },
-                    'warning': { frequency: 600, duration: 0.4 },
-                    'info': { frequency: 500, duration: 0.3 }
+                    'success': { frequency: 800, duration: 0.2, volume: 0.3 },
+                    'error': { frequency: 300, duration: 0.4, volume: 0.4 },
+                    'warning': { frequency: 600, duration: 0.3, volume: 0.35 },
+                    'info': { frequency: 500, duration: 0.2, volume: 0.3 }
                 };
-                
+
                 const sound = sounds[type] || sounds['info'];
-                
-                // Create oscillator
+
+                // Create oscillator and gain nodes
                 const oscillator = audioContext.createOscillator();
                 const gainNode = audioContext.createGain();
-                
+
                 oscillator.frequency.value = sound.frequency;
                 oscillator.type = 'sine';
-                
-                // Envelope
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + sound.duration);
-                
+
+                // Create envelope for smooth sound
+                const now = audioContext.currentTime;
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(sound.volume, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + sound.duration);
+
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + sound.duration);
+
+                oscillator.start(now);
+                oscillator.stop(now + sound.duration);
             } catch (error) {
-                console.log('Notification sound not available:', error);
+                console.log('Error generating tone:', error);
+            }
+        }
+
+        function playFallbackSound(type) {
+            // Fallback: Create a simple audio element with data URL beep
+            try {
+                // Generate a simple beep sound as data URL
+                const audio = new Audio();
+                audio.volume = 0.3;
+
+                // Simple beep frequencies
+                const frequencies = {
+                    'success': 800,
+                    'error': 300,
+                    'warning': 600,
+                    'info': 500
+                };
+
+                const frequency = frequencies[type] || 500;
+
+                // Create a simple beep using Web Audio API in a data URL approach
+                // This is a simplified approach - in production you might want to use pre-recorded sounds
+                const duration = 200; // ms
+                const sampleRate = 44100;
+                const numSamples = sampleRate * (duration / 1000);
+                const buffer = new ArrayBuffer(44 + numSamples * 2);
+                const view = new DataView(buffer);
+
+                // WAV header
+                const writeString = (offset, string) => {
+                    for (let i = 0; i < string.length; i++) {
+                        view.setUint8(offset + i, string.charCodeAt(i));
+                    }
+                };
+
+                writeString(0, 'RIFF');
+                view.setUint32(4, 36 + numSamples * 2, true);
+                writeString(8, 'WAVE');
+                writeString(12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, 1, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * 2, true);
+                view.setUint16(32, 2, true);
+                view.setUint16(34, 16, true);
+                writeString(36, 'data');
+                view.setUint32(40, numSamples * 2, true);
+
+                // Generate sine wave
+                for (let i = 0; i < numSamples; i++) {
+                    const sample = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 32767;
+                    view.setInt16(44 + i * 2, sample, true);
+                }
+
+                const blob = new Blob([buffer], { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                audio.src = url;
+
+                audio.play().catch(e => {
+                    console.log('Fallback sound failed:', e);
+                }).finally(() => {
+                    URL.revokeObjectURL(url);
+                });
+            } catch (error) {
+                console.log('Fallback sound completely failed:', error);
             }
         }
         
@@ -592,6 +704,7 @@
         // ==================== GLOBAL NOTIFICATION LISTENER ====================
         // Track last notification ID to avoid duplicates across all pages
         let globalLastNotificationId = 0;
+        let notificationPollingInterval = null;
 
         // Map notification types to toast types
         const notificationTypeMap = {
@@ -617,15 +730,22 @@
                             }
                         });
                     }
+                } else if (response.status === 401) {
+                    // User not authenticated, stop polling
+                    stopNotificationPolling();
                 }
             } catch (error) {
                 console.error('Error loading notifications:', error);
+                // If there's an error, stop polling to avoid spam
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    stopNotificationPolling();
+                }
             }
         }
 
         function displayNotificationToast(notification) {
             const toastType = notificationTypeMap[notification.notification_type] || 'info';
-            
+
             // Show toast notification with sound
             showToastNotification(
                 notification.title,
@@ -636,16 +756,53 @@
             );
         }
 
-        // Start listening for notifications on page load if user is logged in
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if user is logged in by looking for notificationsTab
-            const isLoggedIn = document.getElementById('notificationsTab') !== null;
-            
-            if (isLoggedIn) {
-                // Start checking for notifications every 1 second
-                loadUserNotifications();
-                setInterval(loadUserNotifications, 1000);
+        function startNotificationPolling() {
+            // Only start if not already polling
+            if (notificationPollingInterval) {
+                return;
             }
+
+            // Start checking for notifications every 1 second
+            loadUserNotifications(); // Initial load
+            notificationPollingInterval = setInterval(loadUserNotifications, 1000);
+        }
+
+        function stopNotificationPolling() {
+            if (notificationPollingInterval) {
+                clearInterval(notificationPollingInterval);
+                notificationPollingInterval = null;
+            }
+        }
+
+        // Check if user is authenticated and start polling
+        async function checkAuthAndStartPolling() {
+            try {
+                const response = await fetch('/api/me');
+                if (response.ok) {
+                    // User is authenticated, start polling
+                    startNotificationPolling();
+                } else {
+                    // User not authenticated, stop polling
+                    stopNotificationPolling();
+                }
+            } catch (error) {
+                console.error('Error checking authentication:', error);
+                stopNotificationPolling();
+            }
+        }
+
+        // Start listening for notifications on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check authentication and start polling for all users
+            checkAuthAndStartPolling();
+
+            // Also check periodically in case user logs in/out during session
+            setInterval(checkAuthAndStartPolling, 30000); // Check every 30 seconds
+        });
+
+        // Stop polling when page unloads
+        window.addEventListener('beforeunload', function() {
+            stopNotificationPolling();
         });
 
         // ==================== END GLOBAL NOTIFICATION LISTENER ====================
