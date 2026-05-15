@@ -304,12 +304,7 @@ function viewIncident(id) {
 }
 
 async function verifyIncident(id) {
-    const confirmed = await showConfirmModal({
-        title: 'Verify Incident',
-        message: 'Verify this incident so volunteers and coordinators can act on it?',
-        confirmText: 'Verify',
-        confirmClass: 'btn-confirm'
-    });
+    const confirmed = window.confirm('Verify this incident so volunteers and coordinators can act on it?');
     if (!confirmed) return;
     
     try {
@@ -317,13 +312,19 @@ async function verifyIncident(id) {
         const data = await response.json();
         
         if (response.ok) {
-            await showMessageModal('Incident Verified', 'Incident verified successfully!', 'success');
-            loadIncidents();
+            showNotification('Incident verified successfully!', 'success', 2000);
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('id')) {
+                await loadSingleIncident(id);
+            } else {
+                await loadIncidents();
+            }
         } else {
-            await showMessageModal('Verification Failed', data.error || 'Failed to verify incident', 'danger');
+            showNotification(data.error || 'Failed to verify incident', 'error', 3000);
         }
     } catch (error) {
-        await showMessageModal('Verification Error', 'Error verifying incident', 'danger');
+        console.error('Error verifying incident:', error);
+        showNotification('Error verifying incident', 'error', 3000);
     }
 }
 
@@ -352,7 +353,7 @@ async function confirmStatusUpdate() {
         const data = await response.json();
 
         if (response.ok) {
-            await showMessageModal('Status Updated', 'Status updated successfully!', 'success');
+            showNotification('Status updated successfully!', 'success', 2000);
             
             // VOLUNTEER REDIRECT: Go to dashboard after update
             const userResponse = await fetch('/api/me');
@@ -369,11 +370,11 @@ async function confirmStatusUpdate() {
                 }
             }
         } else {
-            await showMessageModal('Update Failed', data.error || 'Failed to update status', 'danger');
+            showNotification(data.error || 'Failed to update status', 'error', 3000);
         }
     } catch (error) {
-        await showMessageModal('Update Error', 'Error updating status', 'danger');
         console.error(error);
+        showNotification('Error updating status', 'error', 3000);
     }
 }
 
