@@ -810,8 +810,16 @@ span[style*="background"] {
         position: static;
     }
 
-    .filters-grid {
+    .filters-grid,
+    .metric-grid {
         grid-template-columns: 1fr;
+    }
+
+    .admin-panel .card,
+    .management-section .card,
+    .admin-panel table {
+        overflow-x: auto;
+        min-width: 0;
     }
 }
 
