@@ -498,10 +498,21 @@ def get_notifications():
 @incidents_bp.route('/notifications/unread', methods=['GET'])
 @require_auth
 def get_unread_notifications():
-    """Get unread notifications count - for all users"""
+    """Get unread notifications for current user - for all users"""
+    limit = request.args.get('limit', 10, type=int)
+    
+    # Get unread notifications
+    unread = Notification.query.filter_by(
+        user_id=session['user_id'],
+        is_read=False
+    ).order_by(Notification.created_at.desc()).limit(limit).all()
+    
     count = Notification.get_unread_count(session['user_id'])
     
-    return jsonify({'unread_count': count}), 200
+    return jsonify({
+        'unread_count': count,
+        'notifications': [n.to_dict() for n in unread]
+    }), 200
 
 
 @incidents_bp.route('/notifications/<int:notification_id>/read', methods=['PUT'])
