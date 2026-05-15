@@ -66,9 +66,10 @@
         // ==================== SERVICE WORKER REGISTRATION ====================
         // Register service worker for push notifications
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/service-worker.js')
+            navigator.serviceWorker.register('/static/service-worker.js', { scope: '/' })
                 .then(registration => {
                     console.log('[App] Service Worker registered successfully:', registration);
+                    serviceWorkerRegistration = registration;
                     // Initialize push notifications
                     initPushNotifications();
                 })
@@ -134,6 +135,7 @@
                 } else {
                     console.log('[App] User is not subscribed to push notifications');
                 }
+                updatePushNotificationUI();
             } catch (error) {
                 console.error('[App] Error checking push subscription:', error);
             }
