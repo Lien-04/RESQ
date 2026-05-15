@@ -123,6 +123,12 @@
         async function checkPushSubscription() {
             try {
                 if (!serviceWorkerRegistration) {
+                    if ('serviceWorker' in navigator) {
+                        serviceWorkerRegistration = await navigator.serviceWorker.ready;
+                    }
+                }
+
+                if (!serviceWorkerRegistration) {
                     console.warn('[App] Service worker not ready yet');
                     return;
                 }
@@ -151,6 +157,12 @@
                     console.log('[App] Push notification permission denied');
                     showNotification('Notifications disabled', 'warning');
                     return false;
+                }
+
+                if (!serviceWorkerRegistration) {
+                    if ('serviceWorker' in navigator) {
+                        serviceWorkerRegistration = await navigator.serviceWorker.ready;
+                    }
                 }
 
                 if (!serviceWorkerRegistration) {
@@ -206,6 +218,12 @@
         // Unsubscribe from push notifications
         async function disablePushNotifications() {
             try {
+                if (!serviceWorkerRegistration) {
+                    if ('serviceWorker' in navigator) {
+                        serviceWorkerRegistration = await navigator.serviceWorker.ready;
+                    }
+                }
+
                 if (!serviceWorkerRegistration) {
                     console.error('[App] Service worker not ready');
                     return false;
