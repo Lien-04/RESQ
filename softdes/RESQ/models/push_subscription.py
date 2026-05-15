@@ -2,6 +2,7 @@
 Push Subscription Model - SQLAlchemy model for storing push notification subscriptions
 """
 from datetime import datetime
+import hashlib
 from ..db import db
 
 
@@ -14,7 +15,8 @@ class PushSubscription(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    endpoint = db.Column(db.String(768), nullable=False, unique=True)
+    endpoint_hash = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    endpoint = db.Column(db.Text, nullable=False)
     auth = db.Column(db.String(255), nullable=False)
     p256dh = db.Column(db.String(255), nullable=False)
     device_name = db.Column(db.String(100))  # Browser/device name
@@ -24,9 +26,14 @@ class PushSubscription(db.Model):
 
     user = db.relationship('User', backref='push_subscriptions')
 
+    @staticmethod
+    def compute_endpoint_hash(endpoint):
+        return hashlib.sha256(endpoint.encode('utf-8')).hexdigest()
+
     def __init__(self, user_id, endpoint, auth, p256dh, device_name=None):
         self.user_id = user_id
         self.endpoint = endpoint
+        self.endpoint_hash = PushSubscription.compute_endpoint_hash(endpoint)
         self.auth = auth
         self.p256dh = p256dh
         self.device_name = device_name or 'Unknown Device'
@@ -63,7 +70,8 @@ class PushSubscription(db.Model):
     @staticmethod
     def find_by_endpoint(endpoint):
         """Find subscription by endpoint"""
-        return PushSubscription.query.filter_by(endpoint=endpoint).first()
+        endpoint_hash = PushSubscription.compute_endpoint_hash(endpoint)
+        return PushSubscription.query.filter_by(endpoint_hash=endpoint_hash).first()
 
     @staticmethod
     def get_by_user(user_id):
@@ -87,6 +95,9 @@ class PushSubscription(db.Model):
             # Update existing subscription
             existing.is_active = True
             existing.last_used = datetime.utcnow()
+            existing.auth = auth
+            existing.p256dh = p256dh
+            existing.device_name = device_name or existing.device_name
             db.session.commit()
             return existing
         
