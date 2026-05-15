@@ -702,8 +702,9 @@
         window.playNotificationSound = playNotificationSound;
 
         // ==================== GLOBAL NOTIFICATION LISTENER ====================
-        // Track last notification ID to avoid duplicates across all pages
-        let globalLastNotificationId = 0;
+        // Track last notification ID to avoid duplicates across page loads
+        const NOTIFICATION_STORAGE_KEY = 'RESQ_LAST_NOTIFICATION_ID';
+        let globalLastNotificationId = loadLastNotificationId();
         let notificationPollingInterval = null;
 
         // Map notification types to toast types
@@ -716,17 +717,39 @@
             'system': 'warning'
         };
 
+        function saveLastNotificationId(id) {
+            try {
+                localStorage.setItem(NOTIFICATION_STORAGE_KEY, String(id));
+            } catch (error) {
+                console.warn('Unable to save notification id:', error);
+            }
+        }
+
+        function loadLastNotificationId() {
+            try {
+                const stored = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
+                return stored ? parseInt(stored, 10) || 0 : 0;
+            } catch (error) {
+                return 0;
+            }
+        }
+
         async function loadUserNotifications() {
             try {
                 const response = await fetch('/api/notifications/unread?limit=10');
                 if (response.ok) {
                     const data = await response.json();
                     if (data.notifications && data.notifications.length > 0) {
-                        // Check for new notifications
-                        data.notifications.forEach(notif => {
+                        // Ensure notifications are shown in order
+                        const notifications = data.notifications
+                            .slice()
+                            .sort((a, b) => a.id - b.id);
+
+                        notifications.forEach(notif => {
                             if (notif.id > globalLastNotificationId) {
-                                globalLastNotificationId = notif.id;
                                 displayNotificationToast(notif);
+                                globalLastNotificationId = notif.id;
+                                saveLastNotificationId(globalLastNotificationId);
                             }
                         });
                     }
@@ -736,7 +759,6 @@
                 }
             } catch (error) {
                 console.error('Error loading notifications:', error);
-                // If there's an error, stop polling to avoid spam
                 if (error.message.includes('401') || error.message.includes('403')) {
                     stopNotificationPolling();
                 }
@@ -746,13 +768,12 @@
         function displayNotificationToast(notification) {
             const toastType = notificationTypeMap[notification.notification_type] || 'info';
 
-            // Show toast notification with sound
             showToastNotification(
                 notification.title,
                 notification.message,
                 toastType,
-                true, // Show sound
-                5000 // Duration in milliseconds
+                true,
+                5000
             );
         }
 
