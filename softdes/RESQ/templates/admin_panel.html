@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - RESQ{% endblock %}
+
+{% block content %}
+<div class="admin-panel page-stack">
+
+    <!-- HEADER (from 2nd UI) -->
+    <section class="page-hero compact">
+        <div>
+            <span class="eyebrow">Admin command center</span>
+            <h1>Admin Panel</h1>
+            <p>Manage users, review incidents, assign volunteers, and keep the response system organized.</p>
+        </div>
+        <a class="btn" href="{{ url_for('broadcast_page') }}">Broadcast</a>
+    </section>
+
+    <!-- STATISTICS (styled from 2nd, logic from 1st) -->
+    <div class="metric-grid">
+        <div class="metric-card card">
+            <div class="metric-number navy"><span id="totalUsers">0</span></div>
+            <div class="metric-label">Total Users</div>
+        </div>
+        <div class="metric-card card">
+            <div class="metric-number green"><span id="totalVolunteers">0</span></div>
+            <div class="metric-label">Volunteers</div>
+        </div>
+        <div class="metric-card card">
+            <div class="metric-number orange"><span id="totalIncidents">0</span></div>
+            <div class="metric-label">Incidents</div>
+        </div>
+        <div class="metric-card card">
+            <div class="metric-number red"><span id="criticalIncidents">0</span></div>
+            <div class="metric-label">Critical</div>
+        </div>
+    </div>
+
+    <!-- USER MANAGEMENT -->
+    <div class="management-section">
+        <h3>User Management</h3>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('all-users', event)">All Users</button>
+            <button class="tab-btn" onclick="switchTab('citizens', event)">Citizens</button>
+            <button class="tab-btn" onclick="switchTab('volunteers', event)">Volunteers</button>
+            <button class="tab-btn" onclick="switchTab('admins', event)">Admins</button>
+        </div>
+
+        <div class="card">
+            <div id="tab-all-users" class="tab-content" style="display: block;">
+                <div id="usersList"></div>
+            </div>
+
+            <div id="tab-citizens" class="tab-content" style="display: none;">
+                <div id="citizensList"></div>
+            </div>
+
+            <div id="tab-volunteers" class="tab-content" style="display: none;">
+                <div id="volunteersList"></div>
+            </div>
+
+            <div id="tab-admins" class="tab-content" style="display: none;">
+                <div id="adminsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INCIDENTS -->
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">
+            <h3 style="margin:0;">Assign Incidents</h3>
+            <div>
+                <button class="tab-btn active" onclick="switchIncidentTab('active', event)">Active Incidents</button>
+                <button class="tab-btn" onclick="switchIncidentTab('completed', event)">Completed Reports</button>
+            </div>
+        </div>
+        <div id="incidentsTabActive" style="display:block;">
+            <div id="adminIncidentsList"></div>
+            <div id="adminIncidentsFooter" style="text-align: right; margin-top: 1rem;"></div>
+        </div>
+        <div id="incidentsTabCompleted" style="display:none;">
+            <div id="completedIncidentsList"></div>
+            <div id="completedIncidentsFooter" style="text-align: right; margin-top: 1rem;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL (styled from 2nd, logic from 1st) -->
+<div id="assignmentModal" class="modal-backdrop centered" style="display:none;">
+    <div class="modal-card">
+        <h2>Assign Incident</h2>
+        <select id="assignmentVolunteer">
+            <option value="">-- Choose volunteer --</option>
+        </select>
+        <div style="margin-top:1rem;">
+            <button class="btn" onclick="submitAssignment()">Assign</button>
+            <button class="btn btn-secondary" onclick="closeAssignmentModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadStatistics();
+    loadUsers();
+    loadAdminIncidents();
+
+    // Realtime refresh every 3 seconds
+    setInterval(() => {
+        loadStatistics();
+        if (currentIncidentTab === 'active') {
+            loadAdminIncidents();
+        } else {
+            loadCompletedIncidents();
+        }
+    }, 3000);
+});
+
+// ---------------- TAB ----------------
+function switchTab(tabName, event){
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display='none');
+    document.getElementById(`tab-${tabName}`).style.display='block';
+
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
+
+    if(tabName==='citizens') loadCitizens();
+    if(tabName==='volunteers') loadVolunteers();
+    if(tabName==='admins') loadAdmins();
+}
+
+// ---------------- STATS ----------------
+async function loadStatistics(){
+    const res = await fetch('/api/admin/stats');
+    const data = await res.json();
+
+    totalUsers.textContent = data.users.total;
+    totalVolunteers.textContent = data.users.by_role.volunteer;
+    totalIncidents.textContent = data.incidents.total;
+    criticalIncidents.textContent = data.incidents.by_priority?.critical || 0;
+}
+
+// ---------------- USERS ----------------
+async function loadUsers(){
+    const res = await fetch('/api/admin/users');
+    const data = await res.json();
+    renderTable(data.users, 'usersList');
+}
+
+async function loadCitizens(){
+    const res = await fetch('/api/admin/users?role=citizen');
+    const data = await res.json();
+    renderTable(data.users, 'citizensList');
+}
+
+async function loadAdmins(){
+    const res = await fetch('/api/admin/users?role=admin');
+    const data = await res.json();
+    renderTable(data.users, 'adminsList');
+}
+
+function renderTable(users, target){
+    if(!users || users.length===0){
+        document.getElementById(target).innerHTML="No data";
+        return;
+    }
+
+    let html=`<table style="width:100%">`;
+    html+=`<tr><th>Username</th><th>Name</th><th>Role</th><th>Skills</th><th>Action</th></tr>`;
+
+    users.forEach(u=>{
+        const skillsDisplay = u.role === 'volunteer' && u.volunteer_skills && u.volunteer_skills.length > 0
+            ? u.volunteer_skills.map(s => `<span style="display: inline-block; background: #dbeafe; color: #2563eb; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem; font-size: 0.85rem;">${s.skill_name} (${s.proficiency_level})</span>`).join('')
+            : u.role === 'volunteer' ? '<span style="color: #999;">No skills</span>' : '-';
+        
+        html+=`
+        <tr>
+            <td>${u.username}</td>
+            <td>${u.full_name}</td>
+            <td><span style="background: ${u.role === 'volunteer' ? '#d4edda' : u.role === 'admin' ? '#fff3cd' : '#e8f4fd'}; padding: 0.25rem 0.5rem; border-radius: 4px;">${u.role}</span></td>
+            <td>${skillsDisplay}</td>
+            <td><button onclick="deleteUser(${u.id})">Delete</button></td>
+        </tr>`;
+    });
+
+    html+="</table>";
+    document.getElementById(target).innerHTML=html;
+}
+
+// ---------------- VOLUNTEERS ----------------
+async function loadVolunteers(){
+    const res = await fetch('/api/admin/users?role=volunteer');
+    const data = await res.json();
+
+    let html="";
+    if (!data.users || data.users.length === 0) {
+        html = '<p style="color: #666;">No volunteers found.</p>';
+    } else {
+        data.users.forEach(v=>{
+            const skillsHtml = v.volunteer_skills && v.volunteer_skills.length > 0
+                ? v.volunteer_skills.map(s => `<span style="display: inline-block; background: #d4edda; color: #28a745; padding: 0.35rem 0.7rem; border-radius: 6px; margin: 0.25rem; font-size: 0.9rem; font-weight: 500;">${s.skill_name} <span style="color: #999;">(${s.proficiency_level})</span></span>`).join('')
+                : '<span style="color: #999; font-style: italic;">No skills registered</span>';
+            
+            html += `
+            <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
+                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <h4 style="margin:0;">${v.full_name}</h4>
+                        <p style="margin:0.25rem 0 0; color:#666; font-size: 0.9rem;">${v.email}</p>
+                        <p style="margin:0.5rem 0 0; color:#666; font-weight: 600;">Skills:</p>
+                        <div style="margin-top: 0.5rem;">${skillsHtml}</div>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" onclick="deleteUser(${v.id})">Delete</button>
+                    </div>
+                </div>
+            </div>`;
+        });
+    }
+
+    volunteersList.innerHTML = html;
+}
+
+// ---------------- INCIDENTS ----------------
+let currentIncidentTab = 'active';
+let previousAdminIncidentsData = null;
+let previousCompletedIncidentsData = null;
+
+async function loadAdminIncidents(){
+    const res = await fetch('/api/admin/incidents?exclude_status=resolved&limit=6');
+    const data = await res.json();
+    
+    // Check if data changed
+    if (JSON.stringify(data.incidents) === JSON.stringify(previousAdminIncidentsData)) {
+        return; // No change, skip update
+    }
+    previousAdminIncidentsData = data.incidents;
+    
+    renderAdminIncidentList(data.incidents, false, '/reports');
+}
+
+async function loadCompletedIncidents(){
+    const res = await fetch('/api/admin/incidents?status=resolved&limit=6');
+    const data = await res.json();
+    
+    // Check if data changed
+    if (JSON.stringify(data.incidents) === JSON.stringify(previousCompletedIncidentsData)) {
+        return; // No change, skip update
+    }
+    previousCompletedIncidentsData = data.incidents;
+    
+    renderAdminIncidentList(data.incidents, true, '/reports?status=resolved');
+}
+
+function switchIncidentTab(tabName, event){
+    currentIncidentTab = tabName;
+    document.getElementById('incidentsTabActive').style.display = tabName === 'active' ? 'block' : 'none';
+    document.getElementById('incidentsTabCompleted').style.display = tabName === 'completed' ? 'block' : 'none';
+
+    document.querySelectorAll('.card .tab-btn').forEach(btn => btn.classList.remove('active'));
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('active');
+    }
+
+    if (tabName === 'active') {
+        loadAdminIncidents();
+    } else {
+        loadCompletedIncidents();
+    }
+}
+
+function renderAdminIncidentList(incidents, completed, showMoreHref){
+    const target = completed ? 'completedIncidentsList' : 'adminIncidentsList';
+    const footer = completed ? 'completedIncidentsFooter' : 'adminIncidentsFooter';
+    const listDiv = document.getElementById(target);
+    const footerDiv = document.getElementById(footer);
+    
+    if (!incidents || incidents.length === 0) {
+        listDiv.innerHTML = '<p style="color: #666;">No incidents available.</p>';
+        footerDiv.innerHTML = '';
+        return;
+    }
+
+    const hasMore = incidents.length > 5;
+    const visibleIncidents = hasMore ? incidents.slice(0, 5) : incidents;
+    let html = '';
+
+    visibleIncidents.forEach(i => {
+        const assignedName = i.assignee ? i.assignee.full_name : 'Unassigned';
+        const verificationLabel = i.verification_status === 'verified' ? 'Verified' : 'Not verified';
+        const verifyButtonLabel = i.status === 'verified' ? 'Unverify' : 'Verify';
+        const verifyActionStatus = i.status === 'verified' ? 'pending' : 'verified';
+
+        html += `
+        <div class="card" style="padding: 1rem; margin-bottom: 1rem; display: grid; gap: 0.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+                <div>
+                    <strong>${i.title}</strong>
+                    <p style="margin:0.25rem 0 0; color:#666;">Status: ${i.status.replace(/_/g, ' ')}</p>
+                    <p style="margin:0.25rem 0 0; color:#666;">Assigned: ${assignedName}</p>
+                    <p style="margin:0.25rem 0 0; color:#666;">Verified: ${verificationLabel}</p>
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+                    ${!completed ? `<button class="btn btn-secondary" onclick="assignIncident(${i.id})">Assign</button>` : ''}
+                    ${!completed ? `<button class="btn" onclick="toggleIncidentVerification(${i.id}, '${verifyActionStatus}')">${verifyButtonLabel}</button>` : ''}
+                </div>
+            </div>
+        </div>`;
+    });
+
+    listDiv.innerHTML = html;
+    footerDiv.innerHTML = hasMore ? `<button class="btn btn-secondary" onclick="window.location.href='${showMoreHref}'">Show more</button>` : '';
+}
+
+// ---------------- ACTIONS ----------------
+async function deleteUser(id){
+    showModal(
+        'Delete User',
+        'Are you sure you want to delete this user? This action cannot be undone.',
+        'warning',
+        'Delete',
+        async () => {
+            await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+            loadUsers();
+            loadStatistics();
+        }
+    );
+}
+
+function editVolunteerSkills(id){
+    alert('Volunteer skill editing is not available in this version.');
+}
+
+// ---------------- ASSIGN ----------------
+function assignIncident(id){
+    window.currentAssignmentIncidentId = id;
+    loadVolunteersForAssignment();
+    assignmentModal.style.display='flex';
+}
+
+async function loadVolunteersForAssignment(){
+    const res = await fetch('/api/admin/users?role=volunteer');
+    const data = await res.json();
+
+    assignmentVolunteer.innerHTML="";
+    data.users.forEach(v=>{
+        assignmentVolunteer.innerHTML += `<option value="${v.id}">${v.username}</option>`;
+    });
+}
+
+function closeAssignmentModal(){
+    assignmentModal.style.display='none';
+}
+
+function submitAssignment(){
+    const v = assignmentVolunteer.value;
+    if(!v) {
+        showNotification('Please select a volunteer before assigning.', 'warning', 2000);
+        return;
+    }
+
+    showModal(
+        'Assign Incident',
+        'Assign this incident to the selected volunteer?',
+        'question',
+        'Assign',
+        async () => {
+            const response = await fetch(`/api/reports/${window.currentAssignmentIncidentId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ volunteer_id: parseInt(v) })
+            });
+
+            if (response.ok) {
+                showNotification('Incident assigned successfully.', 'success', 1500);
+                closeAssignmentModal();
+                loadAdminIncidents();
+            } else {
+                const data = await response.json().catch(() => null);
+                showNotification(data?.error || 'Assignment failed.', 'error', 2000);
+            }
+        }
+    );
+}
+
+// ---------------- VERIFY ----------------
+async function toggleIncidentVerification(id, targetStatus){
+    const actionLabel = targetStatus === 'verified' ? 'Verify' : 'Unverify';
+
+    showModal(
+        `${actionLabel} Incident`,
+        `Are you sure you want to ${actionLabel.toLowerCase()} this incident?`,
+        'question',
+        actionLabel,
+        async () => {
+            const response = await fetch(`/api/reports/${id}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: targetStatus })
+            });
+
+            if (response.ok) {
+                showNotification(`Incident ${actionLabel.toLowerCase()}ed successfully.`, 'success', 1500);
+                loadAdminIncidents();
+            } else {
+                const data = await response.json().catch(() => null);
+                showNotification(data?.error || 'Failed to update status.', 'error', 2000);
+            }
+        }
+    );
+}
+
+</script>
+
+
+
+{% endblock %}

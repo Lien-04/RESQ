@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}View Reports - RESQ{% endblock %}
+
+{% block content %}
+<div class="view-reports page-stack">
+    <section class="page-hero compact">
+        <div>
+            <span class="eyebrow">Shared response board</span>
+            <h1>Incident Reports</h1>
+            <p>Scan active incidents, filter by urgency, and open details for the next action.</p>
+        </div>
+        <a class="btn btn-emergency" href="{{ url_for('report_incident_page') }}">New Report</a>
+    </section>
+    
+    <!-- Filters -->
+    <div id="filtersSection" class="card filters-card" style="display: none;">
+        <div class="filters-grid">
+            <div class="form-group">
+                <label for="filterStatus">Status</label>
+                <select id="filterStatus" onchange="loadIncidents()">
+                    <option value="">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="verified">Verified</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="filterType">Type</label>
+                <select id="filterType" onchange="loadIncidents()">
+                    <option value="">All Types</option>
+                    <option value="fire">Fire</option>
+                    <option value="flood">Flood</option>
+                    <option value="earthquake">Earthquake</option>
+                    <option value="storm">Storm</option>
+                    <option value="medical">Medical</option>
+                    <option value="traffic">Traffic</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <button class="btn" onclick="loadIncidents()">Filter</button>
+        </div>
+    </div>
+
+    <!-- Status Update Modal -->
+    <div id="statusModal" class="modal-backdrop" style="display: none;">
+        <div class="modal-card">
+            <h3 style="margin-top: 0;">Update Status</h3>
+            <div style="margin-bottom: 1rem;">
+                <label for="statusSelect" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">New Status:</label>
+                <select id="statusSelect">
+                    <option value="in_progress">In Progress</option>
+                    <option value="resolved">Resolved</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeStatusModal()">Cancel</button>
+                <button class="btn" onclick="confirmStatusUpdate()" style="background: #28a745;">Update</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Incidents List -->
+    <div id="incidentsContainer">
+        <p style="color: #666;">Loading incidents...</p>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const incidentId = params.get('id');
+    
+    if (incidentId) {
+        loadSingleIncident(incidentId);
+    } else {
+        loadIncidents();
+        // Realtime refresh every 3 seconds for incident list
+        setInterval(() => loadIncidents(), 3000);
+    }
+});
+
+async function loadSingleIncident(id) {
+    try {
+        const response = await fetch(`/api/reports/${id}`);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            const message = errorData?.error || 'Incident not found';
+            document.getElementById('incidentsContainer').innerHTML = `<p style="color: #666;">${message}</p>`;
+            return;
+        }
+        
+        // Hide filters section when viewing single incident
+        document.getElementById('filtersSection').style.display = 'none';
+        
+        const data = await response.json();
+        const incident = data.incident;
+        
+        const container = document.getElementById('incidentsContainer');
+        const statusColor = getStatusColor(incident.status);
+        const priorityColor = getPriorityColor(incident.priority);
+        
+        // Check if user is authorized to update (only show button if verified or is admin)
+        const userResponse = await fetch('/api/me');
+        const userData = await userResponse.json();
+        const currentUser = userData.user;
+        
+        let statusUpdateBtn = '';
+        if (incident.status !== 'resolved') {
+            if (currentUser.role === 'admin') {
+                statusUpdateBtn = `<button class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.75rem 1.5rem;" onclick="updateStatus(${incident.id})">Update Status</button>`;
+            } else if (currentUser.role === 'volunteer') {
+                if (incident.verification_status === 'verified' && incident.assigned_to === currentUser.id) {
+                    statusUpdateBtn = `<button class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.75rem 1.5rem;" onclick="updateStatus(${incident.id})">Update Status</button>`;
+                }
+            }
+        }
+        
+        // Show warning if not verified
+        let verificationWarning = '';
+        if (incident.verification_status !== 'verified' && currentUser.role === 'volunteer' && incident.assigned_to === currentUser.id) {
+            verificationWarning = `
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; margin-bottom: 1rem; border-radius: 4px;">
+                <p style="color: #856404; margin: 0;"><strong>⚠️ Warning:</strong> This report is still not verified. You can only update the status after it has been verified by an admin.</p>
+            </div>
+            `;
+        }
+        
+        let html = `
+        <div style="max-width: 800px; margin: 0 auto;">
+            <button class="btn btn-secondary" style="margin-bottom: 1rem;" onclick="window.location.href='/reports'">← Back to All Reports</button>
+            ${verificationWarning}
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div>
+                        <h2 style="margin-bottom: 0.5rem;">${incident.title}</h2>
+                        <span style="background: ${getTypeColor(incident.incident_type)}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.incident_type}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem; display: block; margin-bottom: 0.5rem;">${incident.status}</span>
+                        <span style="background: ${priorityColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.priority}</span>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e0e0e0;">
+                    <p style="color: #666; margin-bottom: 0.5rem;"><strong>📍 Location:</strong> ${incident.location}</p>
+                    <p style="color: #666;"><strong>Reported:</strong> ${new Date(incident.created_at).toLocaleString()}</p>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <h3>Description</h3>
+                    <p style="color: #333; line-height: 1.6;">${incident.description}</p>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f5f7fa; border-radius: 4px;">
+                    ${incident.reporter ? `<p style="color: #666; margin-bottom: 0.5rem;"><strong>Reported By:</strong> ${incident.reporter.full_name} (${incident.reporter.username})</p>` : ''}
+                    ${incident.assignee ? `<p style="color: #666; margin-bottom: 0.5rem;"><strong>Assigned To:</strong> ${incident.assignee.full_name} (${incident.assignee.username})</p>` : ''}
+                    <p style="color: #666;"><strong>Verification Status:</strong> ${incident.verification_status === 'verified' ? '<span style="color: #28a745; font-weight: bold;">✓ Verified</span>' : '<span style="color: #dc3545; font-weight: bold;">✗ Not Verified</span>'}</p>
+                    ${incident.verified_by ? `<p style="color: #666;"><strong>Verified By:</strong> ${incident.verifier.full_name}</p>` : ''}
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    ${incident.status === 'pending' && currentUser.role === 'admin' ? `<button class="btn" style="font-size: 0.85rem; padding: 0.75rem 1.5rem;" onclick="verifyIncident(${incident.id})">Verify Incident</button>` : ''}
+                    ${statusUpdateBtn}
+                </div>
+            </div>
+        </div>
+        `;
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading incident:', error);
+        document.getElementById('incidentsContainer').innerHTML = '<p style="color: #666;">Error loading incident</p>';
+    }
+}
+
+let currentUserRole = null;
+let currentUserId = null;
+let previousViewIncidentsData = null;
+
+async function loadUserRole() {
+    try {
+        const response = await fetch('/api/me');
+        const data = await response.json();
+        currentUserRole = data.user.role;
+        currentUserId = data.user.id;
+    } catch (error) {
+        console.error('Error loading user role:', error);
+    }
+}
+
+async function loadIncidents() {
+    await loadUserRole(); // Ensure role is loaded
+    
+    const status = document.getElementById('filterStatus').value;
+    const type = document.getElementById('filterType').value;
+    
+    let url = '/api/reports?';
+    if (status) url += `status=${status}&`;
+    if (type) url += `type=${type}&`;
+    
+    // Auto-filter volunteers to their own reports
+    // Removed volunteer auto-filter - ALL users now see ALL reports
+    // Show filters for all roles (citizen/volunteer both see system-wide reports)
+    document.getElementById('filtersSection').style.display = 'block';
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousViewIncidentsData)) {
+            return; // No change, skip update
+        }
+        previousViewIncidentsData = data.incidents;
+        
+        const container = document.getElementById('incidentsContainer');
+        
+        if (data.incidents && data.incidents.length > 0) {
+            let html = '<div style="display: grid; gap: 1rem;">';
+            
+            data.incidents.forEach(incident => {
+                const statusColor = getStatusColor(incident.status);
+                const priorityColor = getPriorityColor(incident.priority);
+                
+                const verificationText = incident.verification_status === 'verified' ? 'Verified' : 'Not Verified';
+                const verificationColor = incident.verification_status === 'verified' ? '#28a745' : '#dc3545';
+                html += `
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                        <div>
+                            <h3 style="margin-bottom: 0.25rem;">${incident.title}</h3>
+                            <span style="background: ${getTypeColor(incident.incident_type)}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.incident_type}</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="background: ${statusColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem;">${incident.status.replace(/_/g, ' ')}</span>
+                            <span style="background: ${priorityColor}; color: white; padding: 0.25rem 0.5rem; border-radius: 3px; font-size: 0.85rem; margin-left: 0.5rem;">${incident.priority}</span>
+                        </div>
+                    </div>
+                    <p style="color: #666; margin-bottom: 0.5rem;">📍 ${incident.location}</p>
+                    <p style="color: #333; margin-bottom: 0.5rem;">${incident.description}</p>
+                    <div style="font-size: 0.85rem; color: #999; margin-bottom: 1rem;">
+                        <span>Reported: ${new Date(incident.created_at).toLocaleString()}</span>
+                        ${incident.reporter ? `<span style="margin-left: 1rem;">By: ${incident.reporter.full_name}</span>` : ''}
+                        ${incident.assignee ? `<span style="margin-left: 1rem;">Assigned To: ${incident.assignee.full_name}</span>` : ''}
+                        <span style="margin-left: 1rem;">Verification: <span style="color: ${verificationColor}; font-weight: bold;">${verificationText}</span></span>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn" style="font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="viewIncident(${incident.id})">View Details</button>
+                        ${currentUserRole === 'admin' && incident.status === 'pending' ? `<button class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="verifyIncident(${incident.id})">Verify</button>` : ''}
+                        ${((currentUserRole === 'admin') || (currentUserRole === 'volunteer' && incident.assigned_to == currentUserId && incident.verified_by)) && incident.status !== 'resolved' ? `<button class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="updateStatus(${incident.id})">Update Status</button>` : ''}
+                    </div>
+                </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p style="color: #666;">No incidents found.</p>';
+        }
+    } catch (error) {
+        console.error('Error loading incidents:', error);
+        document.getElementById('incidentsContainer').innerHTML = '<p style="color: #666;">Error loading incidents</p>';
+    }
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': '#ffc107',
+        'verified': '#17a2b8',
+        'in_progress': '#007bff',
+        'resolved': '#28a745'
+    };
+    return colors[status] || '#6c757d';
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        'low': '#6c757d',
+        'normal': '#17a2b8',
+        'high': '#fd7e14',
+        'critical': '#dc3545'
+    };
+    return colors[priority] || '#6c757d';
+}
+
+function getTypeColor(type) {
+    const colors = {
+        'fire': '#dc3545',
+        'flood': '#17a2b8',
+        'earthquake': '#6f42c1',
+        'storm': '#6c757d',
+        'medical': '#28a745',
+        'traffic': '#ffc107',
+        'other': '#20c997'
+    };
+    return colors[type] || '#6c757d';
+}
+
+function viewIncident(id) {
+    window.location.href = `/reports?id=${id}`;
+}
+
+async function verifyIncident(id) {
+    const confirmed = await showConfirmModal({
+        title: 'Verify Incident',
+        message: 'Verify this incident so volunteers and coordinators can act on it?',
+        confirmText: 'Verify',
+        confirmClass: 'btn-confirm'
+    });
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/api/reports/${id}/verify`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok) {
+            await showMessageModal('Incident Verified', 'Incident verified successfully!', 'success');
+            loadIncidents();
+        } else {
+            await showMessageModal('Verification Failed', data.error || 'Failed to verify incident', 'danger');
+        }
+    } catch (error) {
+        await showMessageModal('Verification Error', 'Error verifying incident', 'danger');
+    }
+}
+
+let currentIncidentId = null;
+
+function showStatusModal(id) {
+    currentIncidentId = id;
+    document.getElementById('statusModal').style.display = 'block';
+}
+
+function closeStatusModal() {
+    document.getElementById('statusModal').style.display = 'none';
+    currentIncidentId = null;
+}
+
+async function confirmStatusUpdate() {
+    const newStatus = document.getElementById('statusSelect').value;
+    
+    try {
+        const response = await fetch(`/api/reports/${currentIncidentId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            await showMessageModal('Status Updated', 'Status updated successfully!', 'success');
+            
+            // VOLUNTEER REDIRECT: Go to dashboard after update
+            const userResponse = await fetch('/api/me');
+            const userData = await userResponse.json();
+            if (userData.user.role === 'volunteer') {
+                window.location.href = '/dashboard';
+            } else {
+                closeStatusModal();
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('id')) {
+                    await loadSingleIncident(currentIncidentId);
+                } else {
+                    await loadIncidents();
+                }
+            }
+        } else {
+            await showMessageModal('Update Failed', data.error || 'Failed to update status', 'danger');
+        }
+    } catch (error) {
+        await showMessageModal('Update Error', 'Error updating status', 'danger');
+        console.error(error);
+    }
+}
+
+// Global click outside to close modal
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('statusModal');
+    if (event.target === modal) {
+        closeStatusModal();
+    }
+});
+
+function updateStatus(id) {
+    showStatusModal(id);
+}
+</script>
+{% endblock %}
