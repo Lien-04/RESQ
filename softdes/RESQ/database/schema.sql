@@ -62,6 +62,20 @@ CREATE TABLE IF NOT EXISTS volunteer_skills (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Push subscriptions table: Stores Web Push subscriptions for notifications
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    auth TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    device_name TEXT DEFAULT 'Unknown Device',
+    is_active BOOLEAN DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Incident comments table: Stores discussion about incidents
 CREATE TABLE IF NOT EXISTS comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,3 +95,5 @@ CREATE INDEX IF NOT EXISTS idx_incidents_type ON incidents(incident_type);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_incident_id ON notifications(incident_id);
 CREATE INDEX IF NOT EXISTS idx_volunteer_skills_user_id ON volunteer_skills(user_id);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint);
