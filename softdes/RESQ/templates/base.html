@@ -63,9 +63,32 @@
     </div>
     
     <script>
+        // ==================== WEB PUSH NOTIFICATION SETUP ====================
+        
+        // Push notification state
+        let pushNotificationEnabled = false;
+        let vapidPublicKey = null;
+        let serviceWorkerRegistration = null;
+
         // ==================== SERVICE WORKER REGISTRATION ====================
-        // Register service worker for push notifications
-        if ('serviceWorker' in navigator) {
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) {
+                console.warn('[App] Service Worker not supported in this browser');
+                return;
+            }
+
+            try {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    if (registration.active && registration.active.scriptURL.includes('/static/service-worker.js')) {
+                        console.log('[App] Unregistering old service worker:', registration.active.scriptURL);
+                        await registration.unregister();
+                    }
+                }
+            } catch (error) {
+                console.warn('[App] Could not clean old service workers:', error);
+            }
+
             navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
                 .then(registration => {
                     console.log('[App] Service Worker registered successfully:', registration);
@@ -76,16 +99,9 @@
                 .catch(error => {
                     console.error('[App] Service Worker registration failed:', error);
                 });
-        } else {
-            console.warn('[App] Service Worker not supported in this browser');
         }
 
-        // ==================== WEB PUSH NOTIFICATION SETUP ====================
-        
-        // Push notification state
-        let pushNotificationEnabled = false;
-        let vapidPublicKey = null;
-        let serviceWorkerRegistration = null;
+        registerServiceWorker();
 
         // Initialize push notifications after service worker is ready
         async function initPushNotifications() {
