@@ -1,0 +1,514 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - RESQ{% endblock %}
+
+{% block content %}
+
+<div class="dashboard page-stack">
+    
+    <!-- HERO HEADER (from second UI) -->
+    <section class="page-hero compact">
+        <div>
+            <span class="eyebrow">Operations center</span>
+            <h1>Dashboard</h1>
+            <p>See what needs attention, track your reports, and move response work forward.</p>
+        </div>
+        <a class="btn btn-emergency" href="{{ url_for('report_incident_page') }}">Report Incident</a>
+    </section>
+
+    <!-- USER INFO -->
+    <div id="userInfo" class="user-summary">
+        <p><strong>Welcome,</strong> <span id="userName">User</span></p>
+        <p><strong>Role:</strong> <span id="userRole" style="text-transform: capitalize;">-</span></p>
+    </div>
+    
+    <!-- ADMIN STATS -->
+    <div id="adminStats" class="metric-grid" style="display: none;">
+        <div class="metric-card card">
+            <div class="metric-number navy"><span id="totalIncidentsCount">0</span></div>
+            <div class="metric-label">Total Incidents</div>
+        </div>
+        <div class="metric-card card">
+            <div class="metric-number yellow"><span id="pendingCount">0</span></div>
+            <div class="metric-label">Pending</div>
+        </div>
+        <div class="metric-card card">
+            <div class="metric-number blue"><span id="inProgressCount">0</span></div>
+            <div class="metric-label">In Progress</div>
+        </div>
+        <div class="metric-card card">
+            <div class="metric-number green"><span id="resolvedCount">0</span></div>
+            <div class="metric-label">Resolved</div>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div id="tabNav" class="tabs-wrap">
+        <div class="tabs">
+            <button id="latestIncidentsTab" class="tab-button active" onclick="switchTab('latestIncidents')">Latest Incidents</button>
+            <button id="myReportsTab" class="tab-button" onclick="switchTab('myReports')">My Reports</button>
+            <button id="assignedIncidentsTab" class="tab-button" onclick="switchTab('assignedIncidents')" style="display: none;">Assigned Incidents</button>
+            <button id="completedAssignmentsTab" class="tab-button" onclick="switchTab('completedAssignments')" style="display: none;">Completed Assignments</button>
+        </div>
+    </div>
+    
+    <!-- CONTENTS -->
+    <div id="latestIncidentsContent" class="tab-content" style="display: block;">
+        <div class="card">
+            <h3>Recent Incidents</h3>
+            <div id="incidentsList">
+                <p style="color: #666;">Loading incidents...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="myReportsContent" class="tab-content" style="display: none;">
+        <div class="card">
+            <h3>My Reports</h3>
+            <div id="myReportsList">
+                <p style="color: #666;">Loading your reports...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="assignedIncidentsContent" class="tab-content" style="display: none;">
+        <div class="card">
+            <h3>Incidents Assigned to Me</h3>
+            <div id="assignedIncidentsList">
+                <p style="color: #666;">Loading assigned incidents...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="completedAssignmentsContent" class="tab-content" style="display: none;">
+        <div class="card">
+            <h3>Completed Assignments</h3>
+            <div id="completedAssignmentsList">
+                <p style="color: #666;">Loading completed assignments...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentUser = null;
+let previousIncidentsData = null;
+let previousMyReportsData = null;
+let previousAssignedData = null;
+let previousCompletedData = null;
+let previousAdminStats = null;
+
+// SAME BACKEND LOGIC (UNCHANGED)
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadUserInfo();
+    await setupAdminView();
+
+    // Realtime refresh every 3 seconds
+    setInterval(async () => {
+        await loadUserInfo();
+        if (currentUser && currentUser.role === 'admin') {
+            await loadAdminStats();
+            await loadLatestIncidents();
+        } else {
+            await loadLatestIncidents();
+            await loadMyReports();
+            if (currentUser && currentUser.role === 'volunteer') {
+                await loadAssignedIncidents();
+                await loadCompletedAssignments();
+            }
+        }
+    }, 3000);
+});
+
+async function setupAdminView() {
+    if (currentUser && currentUser.role === 'admin') {
+        document.getElementById('adminStats').style.display = 'grid';
+        document.getElementById('tabNav').style.display = 'none';
+        document.getElementById('myReportsContent').style.display = 'none';
+        document.getElementById('assignedIncidentsContent').style.display = 'none';
+        document.getElementById('latestIncidentsContent').style.display = 'block';
+        await loadAdminStats();
+        await loadLatestIncidents();
+    } else {
+        await loadLatestIncidents();
+        await loadMyReports();
+        if (currentUser && currentUser.role === 'volunteer') {
+            document.getElementById('assignedIncidentsTab').style.display = 'block';
+            document.getElementById('completedAssignmentsTab').style.display = 'block';
+            await loadAssignedIncidents();
+            await loadCompletedAssignments();
+        }
+    }
+}
+
+function switchTab(tabName) {
+    document.getElementById('latestIncidentsContent').style.display = 'none';
+    document.getElementById('myReportsContent').style.display = 'none';
+    document.getElementById('assignedIncidentsContent').style.display = 'none';
+    document.getElementById('completedAssignmentsContent').style.display = 'none';
+
+    document.getElementById('latestIncidentsTab').classList.remove('active');
+    document.getElementById('myReportsTab').classList.remove('active');
+    if (document.getElementById('assignedIncidentsTab')) {
+        document.getElementById('assignedIncidentsTab').classList.remove('active');
+    }
+    if (document.getElementById('completedAssignmentsTab')) {
+        document.getElementById('completedAssignmentsTab').classList.remove('active');
+    }
+
+    document.getElementById(tabName + 'Content').style.display = 'block';
+    document.getElementById(tabName + 'Tab').classList.add('active');
+}
+
+async function loadUserInfo() {
+    try {
+        const response = await fetch('/api/me');
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+
+        const data = await response.json();
+        currentUser = data.user;
+
+        document.getElementById('userName').textContent = data.user.full_name;
+        document.getElementById('userRole').textContent = data.user.role;
+    } catch (error) {
+        console.error('Error loading user info:', error);
+    }
+}
+
+async function loadLatestIncidents() {
+    try {
+        const response = await fetch('/api/reports');
+        if (!response.ok) {
+            throw new Error('Failed to fetch incidents');
+        }
+        const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousIncidentsData)) {
+            return; // No change, skip update
+        }
+        previousIncidentsData = data.incidents;
+        
+        let html = '';
+        if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach(incident => {
+                const statusColors = {
+                    'pending': '#ffc107',
+                    'verified': '#17a2b8',
+                    'in_progress': '#0275d8',
+                    'resolved': '#28a745'
+                };
+                
+                let actionButtons = '';
+                if (currentUser && currentUser.role === 'admin') {
+                    actionButtons = `
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'verified', '${incident.title}')">✓ Verify</button>
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'in_progress', '${incident.title}')">⚡ In Progress</button>
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'resolved', '${incident.title}')">✓ Resolve</button>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#ff6b35'};">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Reported: ${new Date(incident.created_at).toLocaleString()}</p>
+                        ${actionButtons}
+                    </div>
+                `;
+            });
+        } else {
+            html = '<p style="color: #666;">No incidents reported yet.</p>';
+        }
+        
+        document.getElementById('incidentsList').innerHTML = html;
+    } catch (error) {
+        console.error('Error loading incidents:', error);
+        document.getElementById('incidentsList').innerHTML = '<p style="color: #d9534f;">Failed to load incidents.</p>';
+    }
+}
+
+async function loadMyReports() {
+    try {
+        const response = await fetch('/api/reports?my_reports=true');
+        if (!response.ok) {
+            throw new Error('Failed to fetch reports');
+        }
+        const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousMyReportsData)) {
+            return; // No change, skip update
+        }
+        previousMyReportsData = data.incidents;
+        
+        let html = '';
+        if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach(incident => {
+                const statusColors = {
+                    'pending': '#ffc107',
+                    'verified': '#17a2b8',
+                    'in_progress': '#0275d8',
+                    'resolved': '#28a745'
+                };
+                
+                html += `
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#5cb85c'};">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Reported: ${new Date(incident.created_at).toLocaleString()}</p>
+                    </div>
+                `;
+            });
+        } else {
+            html = '<p style="color: #666;">You haven\'t reported any incidents yet.</p>';
+        }
+        
+        document.getElementById('myReportsList').innerHTML = html;
+    } catch (error) {
+        console.error('Error loading my reports:', error);
+        document.getElementById('myReportsList').innerHTML = '<p style="color: #d9534f;">Failed to load reports.</p>';
+    }
+}
+
+async function loadAssignedIncidents() {
+    try {
+        const response = await fetch('/api/reports?assigned_to_me=true');
+        if (!response.ok) {
+            throw new Error('Failed to fetch assigned incidents');
+        }
+        const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousAssignedData)) {
+            return; // No change, skip update
+        }
+        previousAssignedData = data.incidents;
+        
+        let html = '';
+        if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach(incident => {
+                const statusColors = {
+                    'pending': '#ffc107',
+                    'verified': '#17a2b8',
+                    'in_progress': '#0275d8',
+                    'resolved': '#28a745'
+                };
+                
+                let actionButtons = '';
+                if (currentUser && currentUser.role === 'volunteer') {
+                    actionButtons = `
+                        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'in_progress', '${incident.title}')">⚡ Start</button>
+                            <button class="btn-small" onclick="updateIncidentStatus(${incident.id}, 'resolved', '${incident.title}')">✓ Complete</button>
+                        </div>
+                    `;
+                }
+
+                const assignedStatus = incident.status === 'in_progress' ? 'Waiting for Response' : incident.status.replace(/_/g, ' ');
+                const verificationText = incident.verification_status === 'verified' ? 'Verified' : 'Not Verified';
+                const verificationColor = incident.verification_status === 'verified' ? '#28a745' : '#dc3545';
+                
+                html += `
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#0275d8'};">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${assignedStatus}</span></p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Verification:</strong> <span style="color: ${verificationColor}; font-weight: bold;">${verificationText}</span></p>
+                        <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Assigned: ${new Date(incident.created_at).toLocaleString()}</p>
+                        ${actionButtons}
+                    </div>
+                `;
+            });
+        } else {
+            html = '<p style="color: #666;">No incidents assigned to you yet.</p>';
+        }
+        
+        document.getElementById('assignedIncidentsList').innerHTML = html;
+    } catch (error) {
+        console.error('Error loading assigned incidents:', error);
+        document.getElementById('assignedIncidentsList').innerHTML = '<p style="color: #d9534f;">Failed to load assigned incidents.</p>';
+    }
+}
+
+async function loadCompletedAssignments() {
+    try {
+        const response = await fetch('/api/reports?completed_assignments=true');
+        if (!response.ok) {
+            throw new Error('Failed to fetch completed assignments');
+        }
+        const data = await response.json();
+        
+        // Check if data changed
+        if (JSON.stringify(data.incidents) === JSON.stringify(previousCompletedData)) {
+            return; // No change, skip update
+        }
+        previousCompletedData = data.incidents;
+        
+        let html = '';
+        if (data.incidents && data.incidents.length > 0) {
+            data.incidents.forEach(incident => {
+                const statusColors = {
+                    'pending': '#ffc107',
+                    'verified': '#17a2b8',
+                    'in_progress': '#0275d8',
+                    'resolved': '#28a745'
+                };
+                
+                html += `
+                    <div class="incident-item card" style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${statusColors[incident.status] || '#5cb85c'};">
+                        <h4 style="margin: 0 0 0.5rem 0; color: #1e3c72;">${incident.title}</h4>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Type:</strong> ${incident.incident_type}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Location:</strong> ${incident.location}</p>
+                        <p style="margin: 0.25rem 0; color: #666;"><strong>Status:</strong> <span style="text-transform: capitalize; background: ${statusColors[incident.status] || '#999'}; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; display: inline-block; font-size: 0.85em;">${incident.status}</span></p>
+                        <p style="margin: 0.25rem 0; color: #999; font-size: 0.9em;">Completed: ${new Date(incident.created_at).toLocaleString()}</p>
+                    </div>
+                `;
+            });
+        } else {
+            html = '<p style="color: #666;">You haven\'t completed any assignments yet.</p>';
+        }
+        
+        document.getElementById('completedAssignmentsList').innerHTML = html;
+    } catch (error) {
+        console.error('Error loading completed assignments:', error);
+        document.getElementById('completedAssignmentsList').innerHTML = '<p style="color: #d9534f;">Failed to load completed assignments.</p>';
+    }
+}
+
+async function loadAdminStats() {
+    try {
+        const response = await fetch('/api/reports');
+        if (!response.ok) {
+            throw new Error('Failed to fetch incidents');
+        }
+        const data = await response.json();
+        
+        let total = 0;
+        let pending = 0;
+        let inProgress = 0;
+        let resolved = 0;
+        
+        if (data.incidents) {
+            total = data.incidents.length;
+            data.incidents.forEach(incident => {
+                if (incident.status === 'pending') {
+                    pending++;
+                } else if (incident.status === 'in_progress') {
+                    inProgress++;
+                } else if (incident.status === 'resolved') {
+                    resolved++;
+                }
+            });
+        }
+        
+        const newStats = { total, pending, inProgress, resolved };
+        if (JSON.stringify(newStats) === JSON.stringify(previousAdminStats)) {
+            return; // No change, skip update
+        }
+        previousAdminStats = newStats;
+        
+        document.getElementById('totalIncidentsCount').textContent = total;
+        document.getElementById('pendingCount').textContent = pending;
+        document.getElementById('inProgressCount').textContent = inProgress;
+        document.getElementById('resolvedCount').textContent = resolved;
+    } catch (error) {
+        console.error('Error loading admin stats:', error);
+    }
+}
+
+// ==================== STATUS UPDATE WITH MODAL ====================
+async function updateIncidentStatus(incidentId, newStatus, title) {
+    const statusMessages = {
+        'verified': 'Mark this incident as verified?',
+        'in_progress': 'Start responding to this incident?',
+        'resolved': 'Mark this incident as resolved?'
+    };
+    
+    const statusEmojis = {
+        'verified': 'info',
+        'in_progress': 'question',
+        'resolved': 'success'
+    };
+    
+    const statusLabels = {
+        'verified': 'Verify',
+        'in_progress': 'Start Work',
+        'resolved': 'Complete'
+    };
+    
+    showModal(
+        `${statusLabels[newStatus]} Incident`,
+        `${statusMessages[newStatus]}\n\n"${title}"`,
+        statusEmojis[newStatus],
+        `Yes, ${statusLabels[newStatus].toLowerCase()}`,
+        async () => {
+            try {
+                const response = await fetch(`/api/reports/${incidentId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (response.ok) {
+                    showNotification(`✓ Status updated to "${newStatus}"!`, 'success', 2000);
+                    
+                    // Reload the appropriate list
+                    if (currentUser.role === 'admin') {
+                        await loadLatestIncidents();
+                    } else if (currentUser.role === 'volunteer') {
+                        await loadAssignedIncidents();
+                    } else {
+                        await loadMyReports();
+                    }
+                } else {
+                    const data = await response.json();
+                    showNotification(`✕ ${data.error || 'Failed to update status'}`, 'error', 2000);
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                showNotification('✕ Error updating status', 'error', 2000);
+            }
+        }
+    );
+}
+
+// Add CSS for buttons
+const dashboardStyle = document.createElement('style');
+dashboardStyle.textContent = `
+    .btn-small {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+    
+    .btn-small:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-small:active {
+        transform: translateY(0);
+    }
+`;
+document.head.appendChild(dashboardStyle);
+
+</script>
+
+{% endblock %}
