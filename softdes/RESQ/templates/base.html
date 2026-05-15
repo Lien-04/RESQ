@@ -395,8 +395,199 @@
                     opacity: 0;
                 }
             }
+            @keyframes toastIn {
+                from {
+                    transform: translateY(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes toastOut {
+                from {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateY(400px);
+                    opacity: 0;
+                }
+            }
         `;
         document.head.appendChild(style);
+
+        // ==================== TOAST NOTIFICATION SYSTEM ====================
+        function showToastNotification(title, message, type = 'info', showSound = true, duration = 5000) {
+            // Create notification container if it doesn't exist
+            let container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    z-index: 9999;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    max-width: 380px;
+                `;
+                document.body.appendChild(container);
+            }
+
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background: white;
+                border-radius: 12px;
+                padding: 16px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                animation: toastIn 0.3s ease-in-out;
+                display: flex;
+                gap: 12px;
+                align-items: flex-start;
+                border-left: 4px solid;
+                min-width: 300px;
+            `;
+
+            // Color scheme based on type
+            const colors = {
+                'success': { border: '#28a745', bg: '#d4edda', icon: '✓', textColor: '#28a745' },
+                'error': { border: '#dc3545', bg: '#f8d7da', icon: '✕', textColor: '#dc3545' },
+                'warning': { border: '#ffc107', bg: '#fff3cd', icon: '⚠', textColor: '#ff9800' },
+                'info': { border: '#17a2b8', bg: '#d1ecf1', icon: 'ℹ', textColor: '#17a2b8' }
+            };
+
+            const color = colors[type] || colors['info'];
+            toast.style.borderLeftColor = color.border;
+
+            // Create icon element
+            const iconEl = document.createElement('div');
+            iconEl.style.cssText = `
+                font-size: 20px;
+                color: ${color.textColor};
+                font-weight: bold;
+                min-width: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            iconEl.textContent = color.icon;
+
+            // Create text container
+            const textContainer = document.createElement('div');
+            textContainer.style.cssText = `
+                flex: 1;
+            `;
+
+            const titleEl = document.createElement('div');
+            titleEl.style.cssText = `
+                font-weight: 600;
+                color: #333;
+                margin-bottom: 4px;
+            `;
+            titleEl.textContent = title;
+
+            const messageEl = document.createElement('div');
+            messageEl.style.cssText = `
+                color: #666;
+                font-size: 14px;
+            `;
+            messageEl.textContent = message;
+
+            textContainer.appendChild(titleEl);
+            textContainer.appendChild(messageEl);
+
+            // Create close button
+            const closeBtn = document.createElement('button');
+            closeBtn.style.cssText = `
+                background: none;
+                border: none;
+                color: #999;
+                cursor: pointer;
+                font-size: 18px;
+                padding: 0;
+                width: 24px;
+                height: 24px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: color 0.2s;
+            `;
+            closeBtn.textContent = '×';
+            closeBtn.onmouseover = () => closeBtn.style.color = '#333';
+            closeBtn.onmouseout = () => closeBtn.style.color = '#999';
+            closeBtn.onclick = () => removeToast();
+
+            toast.appendChild(iconEl);
+            toast.appendChild(textContainer);
+            toast.appendChild(closeBtn);
+
+            container.appendChild(toast);
+
+            // Play sound if enabled
+            if (showSound) {
+                playNotificationSound(type);
+            }
+
+            // Auto-remove after duration
+            const timeout = setTimeout(removeToast, duration);
+
+            function removeToast() {
+                clearTimeout(timeout);
+                toast.style.animation = 'toastOut 0.3s ease-in-out';
+                setTimeout(() => {
+                    toast.remove();
+                    if (container.children.length === 0) {
+                        container.remove();
+                    }
+                }, 300);
+            }
+        }
+
+        // ==================== NOTIFICATION SOUND ====================
+        function playNotificationSound(type = 'info') {
+            try {
+                // Create audio context
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Define sound frequencies for different notification types
+                const sounds = {
+                    'success': { frequency: 800, duration: 0.3 },
+                    'error': { frequency: 300, duration: 0.5 },
+                    'warning': { frequency: 600, duration: 0.4 },
+                    'info': { frequency: 500, duration: 0.3 }
+                };
+                
+                const sound = sounds[type] || sounds['info'];
+                
+                // Create oscillator
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.frequency.value = sound.frequency;
+                oscillator.type = 'sine';
+                
+                // Envelope
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + sound.duration);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + sound.duration);
+            } catch (error) {
+                console.log('Notification sound not available:', error);
+            }
+        }
+        
+        // Expose to global scope
+        window.showToastNotification = showToastNotification;
+        window.playNotificationSound = playNotificationSound;
 
         // Authentication check
         async function checkAuth() {

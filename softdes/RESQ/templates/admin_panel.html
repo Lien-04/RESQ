@@ -104,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStatistics();
     loadUsers();
     loadAdminIncidents();
+    startNotificationListener();
 
     // Realtime refresh every 3 seconds
     setInterval(() => {
@@ -168,14 +169,19 @@ function renderTable(users, target){
     }
 
     let html=`<table style="width:100%">`;
-    html+=`<tr><th>Username</th><th>Name</th><th>Role</th><th>Action</th></tr>`;
+    html+=`<tr><th>Username</th><th>Name</th><th>Role</th><th>Skills</th><th>Action</th></tr>`;
 
     users.forEach(u=>{
+        const skillsDisplay = u.role === 'volunteer' && u.volunteer_skills && u.volunteer_skills.length > 0
+            ? u.volunteer_skills.map(s => `<span style="display: inline-block; background: #dbeafe; color: #2563eb; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem; font-size: 0.85rem;">${s.skill_name} (${s.proficiency_level})</span>`).join('')
+            : u.role === 'volunteer' ? '<span style="color: #999;">No skills</span>' : '-';
+        
         html+=`
         <tr>
             <td>${u.username}</td>
             <td>${u.full_name}</td>
-            <td>${u.role}</td>
+            <td><span style="background: ${u.role === 'volunteer' ? '#d4edda' : u.role === 'admin' ? '#fff3cd' : '#e8f4fd'}; padding: 0.25rem 0.5rem; border-radius: 4px;">${u.role}</span></td>
+            <td>${skillsDisplay}</td>
             <td><button onclick="deleteUser(${u.id})">Delete</button></td>
         </tr>`;
     });
@@ -194,13 +200,18 @@ async function loadVolunteers(){
         html = '<p style="color: #666;">No volunteers found.</p>';
     } else {
         data.users.forEach(v=>{
+            const skillsHtml = v.volunteer_skills && v.volunteer_skills.length > 0
+                ? v.volunteer_skills.map(s => `<span style="display: inline-block; background: #d4edda; color: #28a745; padding: 0.35rem 0.7rem; border-radius: 6px; margin: 0.25rem; font-size: 0.9rem; font-weight: 500;">${s.skill_name} <span style="color: #999;">(${s.proficiency_level})</span></span>`).join('')
+                : '<span style="color: #999; font-style: italic;">No skills registered</span>';
+            
             html += `
             <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
-                <div style="display:flex; justify-content: space-between; align-items: center; gap: 1rem;">
-                    <div>
+                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
                         <h4 style="margin:0;">${v.full_name}</h4>
-                        <p style="margin:0.25rem 0 0; color:#666;">${v.email}</p>
-                        <p style="margin:0.25rem 0 0; color:#666;">Role: ${v.role}</p>
+                        <p style="margin:0.25rem 0 0; color:#666; font-size: 0.9rem;">${v.email}</p>
+                        <p style="margin:0.5rem 0 0; color:#666; font-weight: 600;">Skills:</p>
+                        <div style="margin-top: 0.5rem;">${skillsHtml}</div>
                     </div>
                     <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
                         <button class="btn btn-secondary" onclick="deleteUser(${v.id})">Delete</button>
@@ -401,6 +412,64 @@ async function toggleIncidentVerification(id, targetStatus){
         }
     );
 }
+
+// ==================== NOTIFICATION LISTENER ====================
+let lastNotificationId = 0;
+
+async function startNotificationListener() {
+    // Initial load of notifications
+    await loadNotifications();
+    
+    // Poll for new notifications every 2 seconds
+    setInterval(loadNotifications, 2000);
+}
+
+async function loadNotifications() {
+    try {
+        const response = await fetch('/api/admin/notifications?limit=10');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.notifications && data.notifications.length > 0) {
+                // Check for new notifications
+                data.notifications.forEach(notif => {
+                    if (notif.id > lastNotificationId) {
+                        lastNotificationId = notif.id;
+                        displayNotificationToast(notif);
+                    }
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+    }
+}
+
+function displayNotificationToast(notification) {
+    // Map notification types to toast types
+    const typeMap = {
+        'incident_reported': 'info',
+        'status_update': 'info',
+        'incident_assigned': 'success',
+        'incident_verified': 'success',
+        'broadcast': 'warning',
+        'system': 'info'
+    };
+    
+    const toastType = typeMap[notification.notification_type] || 'info';
+    
+    // Show toast notification with sound
+    showToastNotification(
+        notification.title,
+        notification.message,
+        toastType,
+        true, // Show sound
+        5000 // Duration in milliseconds
+    );
+}
+
+// ================== END NOTIFICATION SYSTEM ==================
 </script>
+
+
 
 {% endblock %}
