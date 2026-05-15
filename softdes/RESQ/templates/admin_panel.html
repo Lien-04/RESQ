@@ -104,7 +104,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStatistics();
     loadUsers();
     loadAdminIncidents();
-    startNotificationListener();
 
     // Realtime refresh every 3 seconds
     setInterval(() => {
@@ -413,61 +412,6 @@ async function toggleIncidentVerification(id, targetStatus){
     );
 }
 
-// ==================== NOTIFICATION LISTENER ====================
-let lastNotificationId = 0;
-
-async function startNotificationListener() {
-    // Initial load of notifications
-    await loadNotifications();
-    
-    // Poll for new notifications every 2 seconds
-    setInterval(loadNotifications, 2000);
-}
-
-async function loadNotifications() {
-    try {
-        const response = await fetch('/api/admin/notifications?limit=10');
-        if (response.ok) {
-            const data = await response.json();
-            if (data.notifications && data.notifications.length > 0) {
-                // Check for new notifications
-                data.notifications.forEach(notif => {
-                    if (notif.id > lastNotificationId) {
-                        lastNotificationId = notif.id;
-                        displayNotificationToast(notif);
-                    }
-                });
-            }
-        }
-    } catch (error) {
-        console.error('Error loading notifications:', error);
-    }
-}
-
-function displayNotificationToast(notification) {
-    // Map notification types to toast types
-    const typeMap = {
-        'incident_reported': 'info',
-        'status_update': 'info',
-        'incident_assigned': 'success',
-        'incident_verified': 'success',
-        'broadcast': 'warning',
-        'system': 'info'
-    };
-    
-    const toastType = typeMap[notification.notification_type] || 'info';
-    
-    // Show toast notification with sound
-    showToastNotification(
-        notification.title,
-        notification.message,
-        toastType,
-        true, // Show sound
-        5000 // Duration in milliseconds
-    );
-}
-
-// ================== END NOTIFICATION SYSTEM ==================
 </script>
 
 

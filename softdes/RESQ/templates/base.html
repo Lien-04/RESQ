@@ -589,6 +589,64 @@
         window.showToastNotification = showToastNotification;
         window.playNotificationSound = playNotificationSound;
 
+        // ==================== GLOBAL NOTIFICATION LISTENER ====================
+        // Track last notification ID to avoid duplicates across all pages
+        let globalLastNotificationId = 0;
+
+        // Map notification types to toast types
+        const notificationTypeMap = {
+            'incident_reported': 'info',
+            'status_update': 'info',
+            'incident_assigned': 'success',
+            'incident_verified': 'success',
+            'broadcast': 'warning',
+            'system': 'warning'
+        };
+
+        async function loadUserNotifications() {
+            try {
+                const response = await fetch('/api/notifications/unread?limit=10');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.notifications && data.notifications.length > 0) {
+                        // Check for new notifications
+                        data.notifications.forEach(notif => {
+                            if (notif.id > globalLastNotificationId) {
+                                globalLastNotificationId = notif.id;
+                                displayNotificationToast(notif);
+                            }
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading notifications:', error);
+            }
+        }
+
+        function displayNotificationToast(notification) {
+            const toastType = notificationTypeMap[notification.notification_type] || 'info';
+            
+            // Show toast notification with sound
+            showToastNotification(
+                notification.title,
+                notification.message,
+                toastType,
+                true, // Show sound
+                5000 // Duration in milliseconds
+            );
+        }
+
+        // Start listening for notifications on page load if user is logged in
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('notificationsTab')) {
+                // Start checking for notifications every 1 second
+                loadUserNotifications();
+                setInterval(loadUserNotifications, 1000);
+            }
+        });
+
+        // ==================== END GLOBAL NOTIFICATION LISTENER ====================
+
         // Authentication check
         async function checkAuth() {
             const response = await fetch('/api/me');
