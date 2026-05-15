@@ -149,7 +149,18 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') {
         return;
     }
-    
+
+    const requestUrl = new URL(event.request.url);
+
+    // Only cache same-origin HTTP/HTTPS requests
+    if (requestUrl.protocol !== 'http:' && requestUrl.protocol !== 'https:') {
+        return;
+    }
+
+    if (requestUrl.origin !== self.location.origin) {
+        return;
+    }
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {
@@ -157,7 +168,9 @@ self.addEventListener('fetch', (event) => {
                 if (response.status === 200) {
                     const responseClone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
+                        cache.put(event.request, responseClone).catch((err) => {
+                            console.warn('[Service Worker] Cache put failed:', err, event.request.url);
+                        });
                     });
                 }
                 return response;
