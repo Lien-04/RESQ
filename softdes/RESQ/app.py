@@ -140,6 +140,11 @@ def create_app(config_name='development'):
     def notifications_page():
         """Notifications page"""
         return render_template('notifications.html')
+
+    @app.route('/service-worker.js')
+    def service_worker():
+        """Serve the service worker from the app root."""
+        return app.send_static_file('service-worker.js')
     
     # ==================== API Routes ====================
     
