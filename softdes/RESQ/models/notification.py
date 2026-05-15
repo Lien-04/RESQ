@@ -180,7 +180,12 @@ class Notification(db.Model):
         This should be called after creating a database notification
         """
         try:
-            from ..routes.push import webpush, WebPushException
+            try:
+                from pywebpush import webpush, WebPushException
+            except ImportError as import_error:
+                print(f'pywebpush not installed: {import_error}')
+                return
+
             from ..models.push_subscription import PushSubscription
             import json
             from flask import current_app
@@ -200,9 +205,6 @@ class Notification(db.Model):
                 'incident_id': notification.incident_id,
                 'timestamp': datetime.utcnow().isoformat()
             }
-            
-            if webpush is None:
-                return
 
             # Send to each subscription
             for subscription in subscriptions:
