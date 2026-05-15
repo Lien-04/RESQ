@@ -274,20 +274,32 @@
         window.enablePushNotifications = enablePushNotifications;
         window.disablePushNotifications = disablePushNotifications;
         window.checkPushSubscription = checkPushSubscription;
+        // Toggle handler used by the bell icon
+        window.togglePushNotifications = togglePushNotifications;
+
 
         // Toggle push notifications on/off
         async function togglePushNotifications(event) {
             event.preventDefault();
-            
-            if (pushNotificationEnabled) {
-                await disablePushNotifications();
-            } else {
-                await enablePushNotifications();
+            try {
+                console.log('[App] Bell clicked. Current enabled:', pushNotificationEnabled);
+
+                if (pushNotificationEnabled) {
+                    await disablePushNotifications();
+                } else {
+                    await enablePushNotifications();
+                }
+
+                // Refresh enabled state from SW
+                await checkPushSubscription();
+                updatePushNotificationUI();
+                console.log('[App] Bell toggle completed. New enabled:', pushNotificationEnabled);
+            } catch (err) {
+                console.error('[App] Bell toggle failed:', err);
+                showNotification('Push toggle failed. Open console for details.', 'error', 2500);
             }
-            
-            // Update UI
-            updatePushNotificationUI();
         }
+
 
         // Update UI to reflect push notification status
         function updatePushNotificationUI() {
