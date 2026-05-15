@@ -3,6 +3,7 @@ RESQ - Disaster Response Coordination Platform
 Main Flask Application
 """
 from flask import Flask, request, jsonify, session, render_template
+from flask_cors import CORS
 from sqlalchemy import inspect, text
 import os
 
@@ -12,6 +13,7 @@ from .models.user import User
 from .models.incident import Incident
 from .models.notification import Notification
 from .models.volunteer_skill import VolunteerSkill
+from .models.push_subscription import PushSubscription
 from .routes.auth import auth_bp
 from .routes.incidents import incidents_bp
 from .routes.admin import admin_bp
@@ -27,6 +29,9 @@ def create_app(config_name='development'):
     
     # Load configuration
     app.config.from_object(config.get(config_name, config['development']))
+    
+    # Enable CORS for API endpoints
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
     
     # Initialize database
     db.init_app(app)
@@ -52,6 +57,10 @@ def create_app(config_name='development'):
     app.register_blueprint(auth_bp)
     app.register_blueprint(incidents_bp)
     app.register_blueprint(admin_bp)
+    
+    # Register push notification blueprint
+    from .routes.push import push_bp
+    app.register_blueprint(push_bp)
     
     # Register before/after request handlers
     @app.before_request

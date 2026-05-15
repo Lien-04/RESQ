@@ -51,6 +51,14 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'resq-jwt-secret')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
 
+    # ============================
+    # WEB PUSH NOTIFICATION CONFIG
+    # ============================
+    # Generate VAPID keys using: python -c "from pywebpush import WebPusher; import json; keys = WebPusher.generate_keys(); print(json.dumps(keys))"
+    VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', 'BJ3z-qdB0wlPxWKmSuSCVLgXW7tclj6mhZvBVWrB_7lJZvhPQOlLrZvOkfJDH-t2sQLwCEtF_xZENCDXlFxvRJA')
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', 'FwvXPJRgv-8CyQMq0v5J-8oqMpY2ZQoqLfvMu-O-kbQ')
+    VAPID_SUBJECT = os.environ.get('VAPID_SUBJECT', 'mailto:resq@disasterresponse.local')
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
