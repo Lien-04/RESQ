@@ -209,6 +209,7 @@ class Notification(db.Model):
             # Send to each subscription
             for subscription in subscriptions:
                 try:
+                    print(f'Sending web push to subscription: {subscription.endpoint}')
                     webpush(
                         subscription_info={
                             'endpoint': subscription.endpoint,
@@ -225,8 +226,8 @@ class Notification(db.Model):
                     )
                     subscription.update_last_used()
                 except Exception as e:
-                    # Log but don't fail - push is optional
-                    print(f'Push notification error: {str(e)}')
+                    error_message = getattr(e, 'response', None) or str(e)
+                    print(f'Push notification error for endpoint {subscription.endpoint}: {error_message}')
         
         except Exception as e:
             # Silently fail - push notifications are optional feature
