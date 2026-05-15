@@ -42,8 +42,18 @@ def get_all_users():
     else:
         users = User.get_all()
     
+    # Include volunteer skills for each user
+    users_data = []
+    for u in users:
+        user_dict = u.to_dict()
+        if u.role == UserRole.VOLUNTEER:
+            user_dict['volunteer_skills'] = [skill.to_dict() for skill in u.skills_entries]
+        else:
+            user_dict['volunteer_skills'] = []
+        users_data.append(user_dict)
+    
     return jsonify({
-        'users': [u.to_dict() for u in users]
+        'users': users_data
     }), 200
 
 
