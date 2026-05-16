@@ -843,9 +843,9 @@
             }
 
             button.style.display = 'inline-flex';
-            button.disabled = state === 'enabled' || state === 'blocked';
+            button.disabled = state === 'blocked';
             button.textContent = state === 'enabled'
-                ? 'Push Enabled'
+                ? 'Test Push'
                 : state === 'blocked'
                     ? 'Push Blocked'
                     : state === 'disabled'
@@ -895,10 +895,12 @@
 
         async function sendTestPushNotification() {
             const response = await fetch('/api/push/test', { method: 'POST' });
+            const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                const message = await response.text();
-                throw new Error(`Test push failed: ${response.status} ${message}`);
+                throw new Error(`Test push failed: ${response.status} ${JSON.stringify(data)}`);
             }
+            console.log('RESQ push test result:', data);
+            return data;
         }
 
         async function initializePushNotifications() {
@@ -966,8 +968,13 @@
 
                 await savePushSubscription(subscription);
                 updatePushButton('enabled');
-                showNotification('Device push notifications enabled.', 'success', 2500);
-                await sendTestPushNotification();
+                const testResult = await sendTestPushNotification();
+                const sentCount = testResult.push_result ? testResult.push_result.sent : 0;
+                showNotification(
+                    sentCount > 0 ? 'Test push sent to your device.' : 'Push saved, but no device push was sent. Check Railway logs.',
+                    sentCount > 0 ? 'success' : 'warning',
+                    4000
+                );
             } catch (error) {
                 console.error('Error enabling push notifications:', error);
                 updatePushButton('available');
