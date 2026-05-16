@@ -59,7 +59,7 @@ def send_notification_pushes(notification):
         except WebPushException as exc:
             status_code = getattr(getattr(exc, 'response', None), 'status_code', None)
             subscription.last_error = str(exc)
-            if status_code in (404, 410):
+            if status_code in (401, 403, 404, 410):
                 subscription.is_active = False
             db.session.commit()
             current_app.logger.warning('Web Push failed for subscription %s: %s', subscription.id, exc)
