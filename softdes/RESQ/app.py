@@ -45,6 +45,12 @@ def create_app(config_name='development'):
                 with db.engine.begin() as conn:
                     conn.execute(text('ALTER TABLE incidents ADD COLUMN verified_by INTEGER'))
 
+        if inspector.has_table('push_subscriptions'):
+            push_columns = [column['name'] for column in inspector.get_columns('push_subscriptions')]
+            with db.engine.begin() as conn:
+                if 'endpoint_hash' not in push_columns:
+                    conn.execute(text('ALTER TABLE push_subscriptions ADD COLUMN endpoint_hash VARCHAR(64)'))
+
         # Initialize sample data if database is empty
         if User.query.count() == 0:
             from .database.init_db import init_database
