@@ -93,10 +93,11 @@ class Notification(db.Model):
 
         try:
             from ..services.web_push import send_notification_pushes
-            send_notification_pushes(notification)
+            notification.push_result = send_notification_pushes(notification)
         except Exception:
             from flask import current_app
             current_app.logger.exception('Failed to send browser push notification')
+            notification.push_result = {'sent': 0, 'skipped': False, 'errors': ['Unexpected push send error']}
 
         return notification
 
