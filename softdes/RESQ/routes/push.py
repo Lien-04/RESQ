@@ -2,7 +2,9 @@
 Routes for browser Web Push subscriptions.
 """
 from flask import Blueprint, current_app, jsonify, request, session
+from sqlalchemy.exc import SQLAlchemyError
 
+from ..db import db
 from ..models.push_subscription import PushSubscription
 
 
@@ -50,6 +52,14 @@ def subscribe():
         )
     except ValueError as exc:
         return jsonify({'error': str(exc)}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Database error while saving push subscription')
+        return jsonify({'error': 'Database error while saving push subscription'}), 500
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Unexpected error while saving push subscription')
+        return jsonify({'error': 'Unexpected error while saving push subscription'}), 500
 
     return jsonify({
         'message': 'Push notifications enabled',
