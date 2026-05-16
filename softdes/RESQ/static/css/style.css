@@ -101,7 +101,8 @@ nav {
 }
 
 .app-nav a,
-nav a {
+nav a,
+#pushToggleBtn {
     min-height: 42px;
     display: inline-flex;
     align-items: center;
@@ -112,13 +113,21 @@ nav a {
     font-weight: 700;
     font-size: 0.94rem;
     transition: 0.2s ease;
+    border: 0;
+    background: transparent;
 }
 
 .app-nav a:hover,
 nav a:hover,
+#pushToggleBtn:hover,
 .nav-cta {
     background: var(--blue-soft);
     color: var(--blue);
+}
+
+#pushToggleBtn:disabled {
+    cursor: default;
+    opacity: 0.72;
 }
 
 .container {
