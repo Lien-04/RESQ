@@ -86,7 +86,8 @@ CREATE INDEX IF NOT EXISTS idx_volunteer_skills_user_id ON volunteer_skills(user
 CREATE TABLE IF NOT EXISTS push_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    endpoint VARCHAR(500) UNIQUE NOT NULL,
+    endpoint TEXT NOT NULL,
+    endpoint_hash VARCHAR(64) UNIQUE NOT NULL,
     p256dh VARCHAR(255) NOT NULL,
     auth VARCHAR(255) NOT NULL,
     user_agent VARCHAR(500),
