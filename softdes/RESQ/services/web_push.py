@@ -18,13 +18,13 @@ def is_push_configured():
 def send_notification_pushes(notification):
     """Send a browser push for a saved Notification row."""
     if not is_push_configured():
-        return {'sent': 0, 'skipped': True}
+        return {'sent': 0, 'skipped': True, 'errors': ['Web Push is not configured']}
 
     try:
         from pywebpush import WebPushException, webpush
     except ImportError:
         current_app.logger.warning('pywebpush is not installed; skipping browser push')
-        return {'sent': 0, 'skipped': True}
+        return {'sent': 0, 'skipped': True, 'errors': ['pywebpush is not installed']}
 
     subscriptions = PushSubscription.query.filter_by(
         user_id=notification.user_id,
@@ -32,7 +32,7 @@ def send_notification_pushes(notification):
     ).all()
 
     if not subscriptions:
-        return {'sent': 0, 'skipped': False}
+        return {'sent': 0, 'skipped': False, 'errors': ['No active subscriptions']}
 
     vapid_private_key = current_app.config['VAPID_PRIVATE_KEY'].replace('\\n', '\n')
     vapid_subject = current_app.config.get('VAPID_CLAIM_EMAIL') or 'mailto:admin@resq.local'
@@ -46,6 +46,7 @@ def send_notification_pushes(notification):
     }
 
     sent = 0
+    errors = []
     for subscription in subscriptions:
         try:
             webpush(
@@ -62,9 +63,11 @@ def send_notification_pushes(notification):
                 subscription.is_active = False
             db.session.commit()
             current_app.logger.warning('Web Push failed for subscription %s: %s', subscription.id, exc)
+            errors.append(str(exc))
         except Exception as exc:
             subscription.last_error = str(exc)
             db.session.commit()
             current_app.logger.warning('Web Push failed for subscription %s: %s', subscription.id, exc)
+            errors.append(str(exc))
 
-    return {'sent': sent, 'skipped': False}
+    return {'sent': sent, 'skipped': False, 'errors': errors}
