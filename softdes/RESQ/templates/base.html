@@ -881,11 +881,16 @@
         }
 
         async function savePushSubscription(subscription) {
-            await fetch('/api/push/subscribe', {
+            const response = await fetch('/api/push/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(subscription.toJSON())
             });
+
+            if (!response.ok) {
+                const message = await response.text();
+                throw new Error(`Push subscription failed: ${response.status} ${message}`);
+            }
         }
 
         async function initializePushNotifications() {
