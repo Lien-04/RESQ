@@ -24,7 +24,7 @@
                     <a href="{{ url_for('broadcast_page') }}">Broadcast</a>
                 {% endif %}
                 <a href="{{ url_for('notifications_page') }}" id="notificationsTab">Notifications</a>
-                <button id="pushToggleBtn" type="button" onclick="enablePushNotifications()" style="display: none; background: transparent; border: 1px solid rgba(255,255,255,0.45); color: inherit; padding: 0.45rem 0.7rem; border-radius: 6px; cursor: pointer;">Enable Push</button>
+                <button id="pushToggleBtn" type="button" onclick="enablePushNotifications()">Enable Push</button>
                 {% if session.role == 'admin' %}
                     <a href="{{ url_for('admin_page') }}">Admin</a>
                 {% endif %}
@@ -842,18 +842,17 @@
                 return;
             }
 
-            if (!isPushSupported() || state === 'disabled') {
-                button.style.display = 'none';
-                return;
-            }
-
             button.style.display = 'inline-flex';
             button.disabled = state === 'enabled' || state === 'blocked';
             button.textContent = state === 'enabled'
                 ? 'Push Enabled'
                 : state === 'blocked'
                     ? 'Push Blocked'
-                    : 'Enable Push';
+                    : state === 'disabled'
+                        ? 'Push Setup Needed'
+                        : state === 'unsupported'
+                            ? 'Push Unsupported'
+                            : 'Enable Push';
         }
 
         async function getPushPublicKey() {
@@ -891,7 +890,7 @@
 
         async function initializePushNotifications() {
             if (!isPushSupported()) {
-                updatePushButton('disabled');
+                updatePushButton('unsupported');
                 return;
             }
 
@@ -923,7 +922,7 @@
         async function enablePushNotifications() {
             if (!isPushSupported()) {
                 showNotification('Push notifications are not supported by this browser.', 'warning', 3000);
-                updatePushButton('disabled');
+                updatePushButton('unsupported');
                 return;
             }
 
