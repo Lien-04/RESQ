@@ -836,6 +836,38 @@
             return outputArray;
         }
 
+        function arrayBuffersMatch(first, second) {
+            if (!first || !second || first.byteLength !== second.byteLength) {
+                return false;
+            }
+
+            const firstView = new Uint8Array(first);
+            const secondView = new Uint8Array(second);
+            return firstView.every((value, index) => value === secondView[index]);
+        }
+
+        async function getFreshPushSubscription(registration, publicKey) {
+            const applicationServerKey = urlBase64ToUint8Array(publicKey);
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (subscription) {
+                const existingKey = subscription.options && subscription.options.applicationServerKey;
+                if (!arrayBuffersMatch(existingKey, applicationServerKey)) {
+                    await subscription.unsubscribe();
+                    subscription = null;
+                }
+            }
+
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey
+                });
+            }
+
+            return subscription;
+        }
+
         function updatePushButton(state) {
             const button = document.getElementById('pushToggleBtn');
             if (!button) {
@@ -919,7 +951,8 @@
                 const existingSubscription = await registration.pushManager.getSubscription();
 
                 if (existingSubscription) {
-                    await savePushSubscription(existingSubscription);
+                    const subscription = await getFreshPushSubscription(registration, publicKey);
+                    await savePushSubscription(subscription);
                     updatePushButton('enabled');
                 } else if (Notification.permission === 'granted') {
                     await enablePushNotifications();
@@ -957,14 +990,7 @@
                 }
 
                 const registration = await registerPushServiceWorker();
-                let subscription = await registration.pushManager.getSubscription();
-
-                if (!subscription) {
-                    subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(publicKey)
-                    });
-                }
+                const subscription = await getFreshPushSubscription(registration, publicKey);
 
                 await savePushSubscription(subscription);
                 updatePushButton('enabled');
