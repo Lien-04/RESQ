@@ -24,7 +24,9 @@
                     <a href="{{ url_for('broadcast_page') }}">Broadcast</a>
                 {% endif %}
                 <a href="{{ url_for('notifications_page') }}" id="notificationsTab">Notifications</a>
-                <button id="pushToggleBtn" type="button" onclick="enablePushNotifications()">Enable Push</button>
+                <button id="pushToggleBtn" class="push-toggle-btn" type="button" onclick="enablePushNotifications()" aria-label="Enable push notifications" title="Enable push notifications">
+                    <span id="pushToggleIcon" aria-hidden="true">🔕</span>
+                </button>
                 {% if session.role == 'admin' %}
                     <a href="{{ url_for('admin_page') }}">Admin</a>
                 {% endif %}
@@ -870,21 +872,30 @@
 
         function updatePushButton(state) {
             const button = document.getElementById('pushToggleBtn');
+            const icon = document.getElementById('pushToggleIcon');
             if (!button) {
                 return;
             }
 
             button.style.display = 'inline-flex';
             button.disabled = state === 'blocked';
-            button.textContent = state === 'enabled'
-                ? 'Test Push'
-                : state === 'blocked'
-                    ? 'Push Blocked'
-                    : state === 'disabled'
-                        ? 'Push Setup Needed'
-                        : state === 'unsupported'
-                            ? 'Push Unsupported'
-                            : 'Enable Push';
+            button.classList.toggle('is-enabled', state === 'enabled');
+            button.classList.toggle('is-muted', state !== 'enabled');
+
+            const labels = {
+                enabled: 'Push notifications enabled. Click to send a test push.',
+                blocked: 'Push notifications are blocked.',
+                disabled: 'Push setup needed.',
+                unsupported: 'Push notifications are not supported.',
+                available: 'Enable push notifications.'
+            };
+
+            if (icon) {
+                icon.textContent = state === 'enabled' ? '🔔' : '🔕';
+            }
+
+            button.setAttribute('aria-label', labels[state] || labels.available);
+            button.setAttribute('title', labels[state] || labels.available);
         }
 
         async function getPushPublicKey() {
