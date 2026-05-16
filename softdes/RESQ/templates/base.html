@@ -24,8 +24,8 @@
                     <a href="{{ url_for('broadcast_page') }}">Broadcast</a>
                 {% endif %}
                 <a href="{{ url_for('notifications_page') }}" id="notificationsTab">Notifications</a>
-                <button id="pushToggleBtn" class="push-toggle-btn" type="button" onclick="enablePushNotifications()" aria-label="Enable push notifications" title="Enable push notifications">
-                    <span id="pushToggleIcon" aria-hidden="true">🔕</span>
+                <button id="pushToggleBtn" class="push-toggle-btn" type="button" onclick="togglePushNotifications()" aria-label="Enable push notifications" title="Enable push notifications">
+                    <span id="pushToggleIcon" aria-hidden="true">&#128277;</span>
                 </button>
                 {% if session.role == 'admin' %}
                     <a href="{{ url_for('admin_page') }}">Admin</a>
@@ -820,6 +820,8 @@
         // ==================== WEB PUSH NOTIFICATIONS ====================
         let pushPublicKey = null;
         let pushServiceWorkerRegistration = null;
+        let pushState = 'available';
+        let pushBusy = false;
 
         function isPushSupported() {
             return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -877,21 +879,24 @@
                 return;
             }
 
+            pushState = state;
             button.style.display = 'inline-flex';
-            button.disabled = state === 'blocked';
+            button.disabled = pushBusy || state === 'blocked' || state === 'unsupported';
             button.classList.toggle('is-enabled', state === 'enabled');
             button.classList.toggle('is-muted', state !== 'enabled');
 
             const labels = {
-                enabled: 'Push notifications enabled. Click to send a test push.',
+                enabled: 'Push notifications enabled. Click to disable.',
                 blocked: 'Push notifications are blocked.',
                 disabled: 'Push setup needed.',
                 unsupported: 'Push notifications are not supported.',
-                available: 'Enable push notifications.'
+                available: 'Push notifications disabled. Click to enable.'
             };
 
             if (icon) {
-                icon.textContent = state === 'enabled' ? '🔔' : '🔕';
+                icon.textContent = state === 'enabled'
+                    ? String.fromCodePoint(128276)
+                    : String.fromCodePoint(128277);
             }
 
             button.setAttribute('aria-label', labels[state] || labels.available);
@@ -936,6 +941,25 @@
             }
         }
 
+        async function removePushSubscription(subscription) {
+            if (!subscription) {
+                return;
+            }
+
+            const response = await fetch('/api/push/unsubscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: subscription.endpoint })
+            });
+
+            if (!response.ok) {
+                const message = await response.text();
+                throw new Error(`Push unsubscribe failed: ${response.status} ${message}`);
+            }
+
+            await subscription.unsubscribe();
+        }
+
         async function sendTestPushNotification() {
             const response = await fetch('/api/push/test', { method: 'POST' });
             const data = await response.json().catch(() => ({}));
@@ -966,7 +990,7 @@
                     await savePushSubscription(subscription);
                     updatePushButton('enabled');
                 } else if (Notification.permission === 'granted') {
-                    await enablePushNotifications();
+                    updatePushButton('available');
                 } else if (Notification.permission === 'denied') {
                     updatePushButton('blocked');
                 } else {
@@ -1005,13 +1029,7 @@
 
                 await savePushSubscription(subscription);
                 updatePushButton('enabled');
-                const testResult = await sendTestPushNotification();
-                const sentCount = testResult.push_result ? testResult.push_result.sent : 0;
-                showNotification(
-                    sentCount > 0 ? 'Test push sent to your device.' : 'Push saved, but no device push was sent. Check Railway logs.',
-                    sentCount > 0 ? 'success' : 'warning',
-                    4000
-                );
+                showNotification('Push notifications enabled.', 'success', 2500);
             } catch (error) {
                 console.error('Error enabling push notifications:', error);
                 updatePushButton('available');
@@ -1019,7 +1037,52 @@
             }
         }
 
+        async function disablePushNotifications() {
+            if (!isPushSupported()) {
+                updatePushButton('unsupported');
+                return;
+            }
+
+            try {
+                const registration = await registerPushServiceWorker();
+                const subscription = await registration.pushManager.getSubscription();
+
+                if (subscription) {
+                    await removePushSubscription(subscription);
+                }
+
+                updatePushButton('available');
+                showNotification('Push notifications disabled.', 'success', 2500);
+            } catch (error) {
+                console.error('Error disabling push notifications:', error);
+                updatePushButton('enabled');
+                showNotification('Unable to disable push notifications.', 'error', 3000);
+            }
+        }
+
+        async function togglePushNotifications() {
+            if (pushBusy) {
+                return;
+            }
+
+            pushBusy = true;
+            updatePushButton(pushState);
+
+            try {
+                if (pushState === 'enabled') {
+                    await disablePushNotifications();
+                } else {
+                    await enablePushNotifications();
+                }
+            } finally {
+                pushBusy = false;
+                updatePushButton(pushState);
+            }
+        }
+
         window.enablePushNotifications = enablePushNotifications;
+        window.disablePushNotifications = disablePushNotifications;
+        window.togglePushNotifications = togglePushNotifications;
         // ==================== END WEB PUSH NOTIFICATIONS ====================
 
         // Start listening for notifications on page load
