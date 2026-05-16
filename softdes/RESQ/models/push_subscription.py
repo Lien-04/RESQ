@@ -2,6 +2,7 @@
 Push subscription model for browser Web Push notifications.
 """
 from datetime import datetime
+import hashlib
 from ..db import db
 
 
@@ -11,7 +12,8 @@ class PushSubscription(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    endpoint = db.Column(db.String(500), nullable=False, unique=True)
+    endpoint = db.Column(db.Text, nullable=False)
+    endpoint_hash = db.Column(db.String(64), nullable=False, unique=True)
     p256dh = db.Column(db.String(255), nullable=False)
     auth = db.Column(db.String(255), nullable=False)
     user_agent = db.Column(db.String(500))
@@ -39,7 +41,8 @@ class PushSubscription(db.Model):
         if not endpoint or not p256dh or not auth:
             raise ValueError('Invalid push subscription')
 
-        subscription = PushSubscription.query.filter_by(endpoint=endpoint).first()
+        endpoint_hash = hashlib.sha256(endpoint.encode('utf-8')).hexdigest()
+        subscription = PushSubscription.query.filter_by(endpoint_hash=endpoint_hash).first()
         if subscription:
             subscription.user_id = user_id
             subscription.p256dh = p256dh
@@ -51,6 +54,7 @@ class PushSubscription(db.Model):
             subscription = PushSubscription(
                 user_id=user_id,
                 endpoint=endpoint,
+                endpoint_hash=endpoint_hash,
                 p256dh=p256dh,
                 auth=auth,
                 user_agent=user_agent
@@ -62,7 +66,8 @@ class PushSubscription(db.Model):
 
     @staticmethod
     def deactivate_endpoint(endpoint, error=None):
-        subscription = PushSubscription.query.filter_by(endpoint=endpoint).first()
+        endpoint_hash = hashlib.sha256(endpoint.encode('utf-8')).hexdigest()
+        subscription = PushSubscription.query.filter_by(endpoint_hash=endpoint_hash).first()
         if subscription:
             subscription.is_active = False
             subscription.last_error = error
