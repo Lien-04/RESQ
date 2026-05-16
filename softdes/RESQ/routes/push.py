@@ -97,9 +97,10 @@ def test_push():
     )
 
     return jsonify({
-        'message': 'Test push sent',
+        'message': 'Test push processed',
         'notification_id': notification.id,
-        'active_subscriptions': active_count
+        'active_subscriptions': active_count,
+        'push_result': getattr(notification, 'push_result', None)
     }), 200
 
 
