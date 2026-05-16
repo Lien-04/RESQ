@@ -849,7 +849,8 @@ span[style*="background"] {
     }
 
     .app-nav a,
-    nav a {
+    nav a,
+    #pushToggleBtn {
         flex: 0 0 auto;
     }
 
