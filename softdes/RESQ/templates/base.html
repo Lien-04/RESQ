@@ -6,6 +6,7 @@
     <title>{% block title %}RESQ - Disaster Response{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/resq-logo.png') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 
 </head>
 <body>
@@ -23,6 +24,7 @@
                     <a href="{{ url_for('broadcast_page') }}">Broadcast</a>
                 {% endif %}
                 <a href="{{ url_for('notifications_page') }}" id="notificationsTab">Notifications</a>
+                <button id="pushToggleBtn" type="button" onclick="enablePushNotifications()" style="display: none; background: transparent; border: 1px solid rgba(255,255,255,0.45); color: inherit; padding: 0.45rem 0.7rem; border-radius: 6px; cursor: pointer;">Enable Push</button>
                 {% if session.role == 'admin' %}
                     <a href="{{ url_for('admin_page') }}">Admin</a>
                 {% endif %}
@@ -802,6 +804,7 @@
                 if (response.ok) {
                     // User is authenticated, start polling
                     startNotificationPolling();
+                    initializePushNotifications();
                 } else {
                     // User not authenticated, stop polling
                     stopNotificationPolling();
@@ -811,6 +814,156 @@
                 stopNotificationPolling();
             }
         }
+
+        // ==================== WEB PUSH NOTIFICATIONS ====================
+        let pushPublicKey = null;
+        let pushServiceWorkerRegistration = null;
+
+        function isPushSupported() {
+            return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+
+            return outputArray;
+        }
+
+        function updatePushButton(state) {
+            const button = document.getElementById('pushToggleBtn');
+            if (!button) {
+                return;
+            }
+
+            if (!isPushSupported() || state === 'disabled') {
+                button.style.display = 'none';
+                return;
+            }
+
+            button.style.display = 'inline-flex';
+            button.disabled = state === 'enabled' || state === 'blocked';
+            button.textContent = state === 'enabled'
+                ? 'Push Enabled'
+                : state === 'blocked'
+                    ? 'Push Blocked'
+                    : 'Enable Push';
+        }
+
+        async function getPushPublicKey() {
+            if (pushPublicKey) {
+                return pushPublicKey;
+            }
+
+            const response = await fetch('/api/push/public-key');
+            if (!response.ok) {
+                updatePushButton('disabled');
+                return null;
+            }
+
+            const data = await response.json();
+            pushPublicKey = data.public_key;
+            return pushPublicKey;
+        }
+
+        async function registerPushServiceWorker() {
+            if (pushServiceWorkerRegistration) {
+                return pushServiceWorkerRegistration;
+            }
+
+            pushServiceWorkerRegistration = await navigator.serviceWorker.register('/service-worker.js');
+            return pushServiceWorkerRegistration;
+        }
+
+        async function savePushSubscription(subscription) {
+            await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(subscription.toJSON())
+            });
+        }
+
+        async function initializePushNotifications() {
+            if (!isPushSupported()) {
+                updatePushButton('disabled');
+                return;
+            }
+
+            try {
+                const publicKey = await getPushPublicKey();
+                if (!publicKey) {
+                    return;
+                }
+
+                const registration = await registerPushServiceWorker();
+                const existingSubscription = await registration.pushManager.getSubscription();
+
+                if (existingSubscription) {
+                    await savePushSubscription(existingSubscription);
+                    updatePushButton('enabled');
+                } else if (Notification.permission === 'granted') {
+                    await enablePushNotifications();
+                } else if (Notification.permission === 'denied') {
+                    updatePushButton('blocked');
+                } else {
+                    updatePushButton('available');
+                }
+            } catch (error) {
+                console.error('Error initializing push notifications:', error);
+                updatePushButton('available');
+            }
+        }
+
+        async function enablePushNotifications() {
+            if (!isPushSupported()) {
+                showNotification('Push notifications are not supported by this browser.', 'warning', 3000);
+                updatePushButton('disabled');
+                return;
+            }
+
+            try {
+                const publicKey = await getPushPublicKey();
+                if (!publicKey) {
+                    showNotification('Push notifications are not configured on the server yet.', 'warning', 3500);
+                    updatePushButton('disabled');
+                    return;
+                }
+
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    updatePushButton(permission === 'denied' ? 'blocked' : 'available');
+                    showNotification('Push notification permission was not granted.', 'warning', 3000);
+                    return;
+                }
+
+                const registration = await registerPushServiceWorker();
+                let subscription = await registration.pushManager.getSubscription();
+
+                if (!subscription) {
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(publicKey)
+                    });
+                }
+
+                await savePushSubscription(subscription);
+                updatePushButton('enabled');
+                showNotification('Device push notifications enabled.', 'success', 2500);
+            } catch (error) {
+                console.error('Error enabling push notifications:', error);
+                updatePushButton('available');
+                showNotification('Unable to enable push notifications.', 'error', 3000);
+            }
+        }
+
+        window.enablePushNotifications = enablePushNotifications;
+        // ==================== END WEB PUSH NOTIFICATIONS ====================
 
         // Start listening for notifications on page load
         document.addEventListener('DOMContentLoaded', function() {

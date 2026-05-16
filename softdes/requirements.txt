@@ -12,5 +12,8 @@ cryptography==41.0.4
 # Production server
 gunicorn==21.2.0
 
+# Browser push notifications
+pywebpush==2.3.0
+
 # Optional (recommended for migrations later)
 Flask-Migrate==4.0.5

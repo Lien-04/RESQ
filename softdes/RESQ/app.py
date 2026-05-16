@@ -2,7 +2,7 @@
 RESQ - Disaster Response Coordination Platform
 Main Flask Application
 """
-from flask import Flask, request, jsonify, session, render_template
+from flask import Flask, request, jsonify, session, render_template, send_from_directory
 from sqlalchemy import inspect, text
 import os
 
@@ -11,10 +11,12 @@ from .db import db
 from .models.user import User
 from .models.incident import Incident
 from .models.notification import Notification
+from .models.push_subscription import PushSubscription
 from .models.volunteer_skill import VolunteerSkill
 from .routes.auth import auth_bp
 from .routes.incidents import incidents_bp
 from .routes.admin import admin_bp
+from .routes.push import push_bp
 
 
 def create_app(config_name='development'):
@@ -52,6 +54,7 @@ def create_app(config_name='development'):
     app.register_blueprint(auth_bp)
     app.register_blueprint(incidents_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(push_bp)
     
     # Register before/after request handlers
     @app.before_request
@@ -114,6 +117,18 @@ def create_app(config_name='development'):
     def notifications_page():
         """Notifications page"""
         return render_template('notifications.html')
+
+    @app.route('/service-worker.js')
+    def service_worker():
+        """Serve the Web Push service worker from the app root."""
+        response = send_from_directory(
+            app.static_folder,
+            'service-worker.js',
+            mimetype='application/javascript'
+        )
+        response.headers['Service-Worker-Allowed'] = '/'
+        response.headers['Cache-Control'] = 'no-cache'
+        return response
     
     # ==================== API Routes ====================
     

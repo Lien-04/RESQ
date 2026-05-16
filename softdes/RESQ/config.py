@@ -42,6 +42,13 @@ class Config:
     # ============================
     RESTFUL_JSON = {'ensure_ascii': False}
 
+    # ============================
+    # WEB PUSH CONFIG
+    # ============================
+    VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY')
+    VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY')
+    VAPID_CLAIM_EMAIL = os.environ.get('VAPID_CLAIM_EMAIL', 'mailto:admin@resq.local')
+
     # Pagination
     ITEMS_PER_PAGE = 20
 

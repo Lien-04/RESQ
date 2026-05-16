@@ -81,3 +81,21 @@ CREATE INDEX IF NOT EXISTS idx_incidents_type ON incidents(incident_type);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_incident_id ON notifications(incident_id);
 CREATE INDEX IF NOT EXISTS idx_volunteer_skills_user_id ON volunteer_skills(user_id);
+
+-- Push subscriptions table: Stores browser/device subscriptions for Web Push
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    endpoint VARCHAR(500) UNIQUE NOT NULL,
+    p256dh VARCHAR(255) NOT NULL,
+    auth VARCHAR(255) NOT NULL,
+    user_agent VARCHAR(500),
+    is_active BOOLEAN DEFAULT 1,
+    last_error TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id ON push_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_is_active ON push_subscriptions(is_active);

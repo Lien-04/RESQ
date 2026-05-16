@@ -90,6 +90,14 @@ class Notification(db.Model):
         )
         db.session.add(notification)
         db.session.commit()
+
+        try:
+            from ..services.web_push import send_notification_pushes
+            send_notification_pushes(notification)
+        except Exception:
+            from flask import current_app
+            current_app.logger.exception('Failed to send browser push notification')
+
         return notification
 
     @staticmethod
