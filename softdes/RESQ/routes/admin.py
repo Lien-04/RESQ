@@ -129,6 +129,9 @@ def delete_user(user_id):
     
     if not user:
         return jsonify({'error': 'User not found'}), 404
+
+    if user.role == UserRole.ADMIN:
+        return jsonify({'error': 'Admin users cannot be deleted'}), 400
     
     try:
         user.delete()
