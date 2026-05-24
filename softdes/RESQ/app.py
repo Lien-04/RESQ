@@ -169,20 +169,4 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     
-    print(f"""
-╔════════════════════════════════════════════════════════════╗
-║                                                            ║
-║       RESQ - Disaster Response Coordination Platform      ║
-║                                                            ║
-║       Server running on http://localhost:{port}            ║
-║                                                            ║
-╚════════════════════════════════════════════════════════════╝
-
-Test Accounts:
---------------
-Admin:     username: admin,     password: admin123
-Volunteer: username: john_volunteer, password: volunteer123
-Citizen:   username: mike_citizen,   password: citizen123
-    """)
-    
     app.run(host='0.0.0.0', port=port, debug=debug, use_reloader=False)
