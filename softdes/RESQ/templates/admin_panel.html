@@ -180,6 +180,9 @@ function renderTable(users, target){
         const skillsDisplay = u.role === 'volunteer' && u.volunteer_skills && u.volunteer_skills.length > 0
             ? u.volunteer_skills.map(s => `<span style="display: inline-block; background: #dbeafe; color: #2563eb; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem; font-size: 0.85rem;">${s.skill_name} (${s.proficiency_level})</span>`).join('')
             : u.role === 'volunteer' ? '<span style="color: #999;">No skills</span>' : '-';
+        const actionCell = u.role === 'admin'
+            ? '<span style="color:#999;">Protected</span>'
+            : `<button onclick="deleteUser(${u.id})">Delete</button>`;
         
         html+=`
         <tr>
@@ -187,7 +190,7 @@ function renderTable(users, target){
             <td>${u.full_name}</td>
             <td><span style="background: ${u.role === 'volunteer' ? '#d4edda' : u.role === 'admin' ? '#fff3cd' : '#e8f4fd'}; padding: 0.25rem 0.5rem; border-radius: 4px;">${u.role}</span></td>
             <td>${skillsDisplay}</td>
-            <td><button onclick="deleteUser(${u.id})">Delete</button></td>
+            <td>${actionCell}</td>
         </tr>`;
     });
 
@@ -291,12 +294,12 @@ function switchIncidentTab(tabName, event){
     }
 }
 
-function showMoreIncidents(completed){
+function toggleIncidentList(completed){
     if (completed) {
-        showAllCompletedIncidents = true;
+        showAllCompletedIncidents = !showAllCompletedIncidents;
         renderAdminIncidentList(previousCompletedIncidentsData, true);
     } else {
-        showAllActiveIncidents = true;
+        showAllActiveIncidents = !showAllActiveIncidents;
         renderAdminIncidentList(previousAdminIncidentsData, false);
     }
 }
@@ -316,6 +319,7 @@ function renderAdminIncidentList(incidents, completed){
     const expanded = completed ? showAllCompletedIncidents : showAllActiveIncidents;
     const hasMore = incidents.length > 5 && !expanded;
     const visibleIncidents = hasMore ? incidents.slice(0, 5) : incidents;
+    const footerLabel = expanded ? 'See less' : 'Show more';
     let html = '';
 
     visibleIncidents.forEach(i => {
@@ -342,7 +346,7 @@ function renderAdminIncidentList(incidents, completed){
     });
 
     listDiv.innerHTML = html;
-    footerDiv.innerHTML = hasMore ? `<button class="btn btn-secondary" onclick="showMoreIncidents(${completed})">Show more</button>` : '';
+    footerDiv.innerHTML = incidents.length > 5 ? `<button class="btn btn-secondary" onclick="toggleIncidentList(${completed})">${footerLabel}</button>` : '';
 }
 
 // ---------------- ACTIONS ----------------
