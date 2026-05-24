@@ -46,7 +46,7 @@
             <button class="tab-btn" onclick="switchTab('admins', event)">Admins</button>
         </div>
 
-        <div class="card">
+        <div id="userTabContentCard" class="card">
             <div id="tab-all-users" class="tab-content" style="display: block;">
                 <div id="usersList"></div>
             </div>
@@ -130,10 +130,10 @@ function switchTab(tabName, event){
     if(tabName==='citizens') loadCitizens();
     if(tabName==='volunteers') loadVolunteers();
     if(tabName==='admins') {
-        loadAdmins();
         loadCurrentIncidentTab();
     }
 
+    document.getElementById('userTabContentCard').style.display = tabName === 'admins' ? 'none' : 'block';
     document.getElementById('adminAssignmentsSection').style.display = tabName === 'admins' ? 'block' : 'none';
 }
 
