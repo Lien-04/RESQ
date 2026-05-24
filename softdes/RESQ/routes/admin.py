@@ -195,7 +195,7 @@ def get_all_incidents():
     status = request.args.get('status')
     exclude_status = request.args.get('exclude_status')
     incident_type = request.args.get('type')
-    limit = request.args.get('limit', 100, type=int)
+    limit = request.args.get('limit', type=int)
 
     query = Incident.query
     if status:
@@ -205,7 +205,11 @@ def get_all_incidents():
     if incident_type:
         query = query.filter_by(incident_type=incident_type)
 
-    incidents = query.order_by(Incident.created_at.desc()).limit(limit).all()
+    query = query.order_by(Incident.created_at.desc())
+    if limit and limit > 0:
+        query = query.limit(limit)
+
+    incidents = query.all()
 
     return jsonify({
         'incidents': [i.to_detailed_dict() for i in incidents]
