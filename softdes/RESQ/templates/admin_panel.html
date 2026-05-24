@@ -173,15 +173,16 @@ function renderTable(users, target){
         return;
     }
 
+    const showActionColumn = target !== 'adminsList';
     let html=`<table style="width:100%">`;
-    html+=`<tr><th>Username</th><th>Name</th><th>Role</th><th>Skills</th><th>Action</th></tr>`;
+    html+=`<tr><th>Username</th><th>Name</th><th>Role</th><th>Skills</th>${showActionColumn ? '<th>Action</th>' : ''}</tr>`;
 
     users.forEach(u=>{
         const skillsDisplay = u.role === 'volunteer' && u.volunteer_skills && u.volunteer_skills.length > 0
             ? u.volunteer_skills.map(s => `<span style="display: inline-block; background: #dbeafe; color: #2563eb; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem; font-size: 0.85rem;">${s.skill_name} (${s.proficiency_level})</span>`).join('')
             : u.role === 'volunteer' ? '<span style="color: #999;">No skills</span>' : '-';
         const actionCell = u.role === 'admin'
-            ? '<span style="color:#999;">Protected</span>'
+            ? ''
             : `<button onclick="deleteUser(${u.id})">Delete</button>`;
         
         html+=`
@@ -190,7 +191,7 @@ function renderTable(users, target){
             <td>${u.full_name}</td>
             <td><span style="background: ${u.role === 'volunteer' ? '#d4edda' : u.role === 'admin' ? '#fff3cd' : '#e8f4fd'}; padding: 0.25rem 0.5rem; border-radius: 4px;">${u.role}</span></td>
             <td>${skillsDisplay}</td>
-            <td>${actionCell}</td>
+            ${showActionColumn ? `<td>${actionCell}</td>` : ''}
         </tr>`;
     });
 
